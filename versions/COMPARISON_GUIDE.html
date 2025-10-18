@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>10 Design Versions - Comparison Guide</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 60px 40px;
+            border-radius: 20px;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .subtitle {
+            font-size: 1.3em;
+            opacity: 0.95;
+        }
+
+        .version-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+
+        .version-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .version-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .version-card.recommended {
+            border: 3px solid #28a745;
+            position: relative;
+        }
+
+        .recommended-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+            z-index: 10;
+        }
+
+        .version-header {
+            padding: 25px;
+            background: linear-gradient(135deg, #e53935 0%, #e35d5b 100%);
+            color: white;
+        }
+
+        .version-header h2 {
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+
+        .version-header .tagline {
+            opacity: 0.95;
+            font-size: 1.1em;
+        }
+
+        .version-body {
+            padding: 25px;
+        }
+
+        .mockup {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 20px;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            text-align: center;
+            color: #666;
+        }
+
+        .mockup-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .quiz-placement {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffc107;
+        }
+
+        .quiz-placement strong {
+            color: #856404;
+        }
+
+        .pros-cons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .pros, .cons {
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .pros {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+
+        .cons {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+
+        .pros h4, .cons h4 {
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .pros ul, .cons ul {
+            margin-left: 20px;
+            font-size: 0.95em;
+        }
+
+        .pros li, .cons li {
+            margin-bottom: 5px;
+        }
+
+        .rating {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .rating-label {
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .stars {
+            color: #ffc107;
+            font-size: 1.3em;
+        }
+
+        .best-for {
+            background: #d1ecf1;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #17a2b8;
+            margin-bottom: 15px;
+        }
+
+        .best-for strong {
+            color: #0c5460;
+        }
+
+        .demo-link {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background 0.3s ease;
+            text-align: center;
+        }
+
+        .demo-link:hover {
+            background: #5568d3;
+        }
+
+        .demo-link.coming-soon {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .summary {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-top: 50px;
+        }
+
+        .summary h2 {
+            color: #667eea;
+            font-size: 2.2em;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+
+        .summary-card {
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #dee2e6;
+        }
+
+        .summary-card h3 {
+            color: #e53935;
+            margin-bottom: 15px;
+        }
+
+        .summary-card ol {
+            margin-left: 20px;
+        }
+
+        .summary-card li {
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 768px) {
+            .version-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pros-cons {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Roblox Studio Tutorial</h1>
+            <p class="subtitle">10 Different Design Versions - Find the Perfect Approach</p>
+        </header>
+
+        <div class="version-grid">
+            <!-- Version 1 -->
+            <div class="version-card">
+                <div class="version-header">
+                    <h2>Version 1: Original</h2>
+                    <p class="tagline">Traditional - Quiz at End</p>
+                </div>
+                <div class="version-body">
+                    <div class="mockup">
+                        <div class="mockup-icon">📄</div>
+                        <p>Sections 1-6<br>↓<br>Complete Quiz (10 questions)</p>
+                    </div>
+                    <div class="quiz-placement">
+                        <strong>Quiz Placement:</strong> End of all content
+                    </div>
+                    <div class="pros-cons">
+                        <div class="pros">
+                            <h4>✓ Pros</h4>
+                            <ul>
+                                <li>Clean separation</li>
+                                <li>No interruptions</li>
+                                <li>Familiar format</li>
+                            </ul>
+                        </div>
+                        <div class="cons">
+                            <h4>✗ Cons</h4>
+                            <ul>
+                                <li>May forget earlier content</li>
+                                <li>Long scroll</li>
+                                <li>No reinforcement</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="rating">
+                        <span class="rating-label">Overall Rating:</span>
+                        <span class="stars">⭐⭐⭐</span>
+                    </div>
+                    <div class="best-for">
+                        <strong>Best For:</strong> Students who prefer traditional learning
+                    </div>
+                    <a href="v1_original.html" class="demo-link">View Demo</a>
+                </div>
+            </div>
+
+            <!-- Version 2 -->
+            <div class="version-card recommended">
+                <div class="recommended-badge">TOP PICK</div>
+                <div class="version-header" style="background: linear-gradient(135deg, #28a745 0%, #5cb85c 100%);">
+                    <h2>Version 2: Mini-Quiz Per Section</h2>
+                    <p class="tagline">Progressive Learning - Immediate Reinforcement</p>
+                </div>
+                <div class="version-body">
+                    <div class="mockup">
+                        <div class="mockup-icon">📚</div>
+                        <p>Section 1 → Quiz (2Q)<br>Section 2 → Quiz (2Q)<br>Section 3 → Quiz (2Q)<br>...<br>Final Score</p>
+                    </div>
+                    <div class="quiz-placement">
+                        <strong>Quiz Placement:</strong> After each section (1-2 questions each)
+                    </div>
+                    <div class="pros-cons">
+                        <div class="pros">
+                            <h4>✓ Pros</h4>
+                            <ul>
+                                <li>Immediate reinforcement</li>
+                                <li>Better retention</li>
+                                <li>Less overwhelming</li>
+                                <li>High engagement</li>
+                            </ul>
+                        </div>
+                        <div class="cons">
+                            <h4>✗ Cons</h4>
+                            <ul>
+                                <li>More scrolling</li>
+                                <li>Might feel choppy</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="rating">
+                        <span class="rating-label">Overall Rating:</span>
+                        <span class="stars">⭐⭐⭐⭐⭐</span>
+                    </div>
+                    <div class="best-for">
+                        <strong>Best For:</strong> Maximum learning retention and engagement
+                    </div>
+                    <a href="v2_quiz_per_section.html" class="demo-link">View Demo</a>
+                </div>
+            </div>
+
+            <!-- Version 3 -->
+            <div class="version-card">
+                <div class="version-header">
+                    <h2>Version 3: Split Quiz</h2>
+                    <p class="tagline">Middle Checkpoint + Final</p>
+                </div>
+                <div class="version-body">
+                    <div class="mockup">
+                        <div class="mockup-icon">✂️</div>
+                        <p>Sections 1-3<br>↓<br>Mid-Quiz (5Q)<br>↓<br>Sections 4-6<br>↓<br>Final Quiz (5Q)</p>
+                    </div>
+                    <div class="quiz-placement">
+                        <strong>Quiz Placement:</strong> After section 3 and at the end
+                    </div>
+                    <div class="pros-cons">
+                        <div class="pros">
+                            <h4>✓ Pros</h4>
+                            <ul>
+                                <li>Natural break points</li>
+                                <li>Manageable chunks</li>
+                                <li>Early feedback</li>
+                                <li>Progress milestones</li>
+                            </ul>
+                        </div>
+                        <div class="cons">
+                            <h4>✗ Cons</h4>
+                            <ul>
+                                <li>Some delay in testing</li>
+                                <li>Feels like 2 lessons</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="rating">
+                        <span class="rating-label">Overall Rating:</span>
+                        <span class="stars">⭐⭐⭐⭐</span>
+                    </div>
+                    <div class="best-for">
+                        <strong>Best For:</strong> Self-paced learning with natural breaks
+                    </div>
+                    <a href="v3_split_quiz.html" class="demo-link">View Demo</a>
+                </div>
+            </div>
+
+            <!-- Version 4 -->
+            <div class="version-card">
+                <div class="version-header">
+                    <h2>Version 4: Sidebar + Floating Quiz</h2>
+                    <p class="tagline">Navigation Sidebar with Persistent Quiz</p>
+                </div>
+                <div class="version-body">
+                    <div class="mockup">
+                        <div class="mockup-icon">📐</div>
+                        <p>[Nav Sidebar] | Content | [Quiz Widget]<br>Sticky quiz updates with scroll</p>
+                    </div>
+                    <div class="quiz-placement">
+                        <strong>Quiz Placement:</strong> Persistent right sidebar, context-aware
+                    </div>
+                    <div class="pros-cons">
+                        <div class="pros">
+                            <h4>✓ Pros</h4>
+                            <ul>
+                                <li>Always accessible</li>
+                                <li>Professional look</li>
+                                <li>Flexible learning</li>
+                                <li>Visual progress</li>
+                            </ul>
+                        </div>
+                        <div class="cons">
+                            <h4>✗ Cons</h4>
+                            <ul>
+                                <li>Complex for young students</li>
+                                <li>Needs large screen</li>
+                                <li>Poor mobile support</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="rating">
+                        <span class="rating-label">Overall Rating:</span>
+                        <span class="stars">⭐⭐⭐⭐</span>
+                    </div>
+                    <div class="best-for">
+                        <strong>Best For:</strong> Desktop users, older students
+                    </div>
+                    <a href="#" class="demo-link coming-soon">Coming Soon</a>
+                </div>
+            </div>
+
+            <!-- Version 5 -->
+            <div class="version-card">
+                <div class="version-header">
+                    <h2>Version 5: Accordion Style</h2>
+                    <p class="tagline">Collapsible Sections with Embedded Quiz</p>
+                </div>
+                <div class="version-body">
+                    <div class="mockup">
+                        <div class="mockup-icon">🪗</div>
+                        <p>▼ Section 1 [Content + Quiz]<br>▶ Section 2<br>▶ Section 3<br>One open at a time</p>
+                    </div>
+                    <div class="quiz-placement">
+                        <strong>Quiz Placement:</strong> Embedded within each collapsible section
+                    </div>
+                    <div class="pros-cons">
+                        <div class="pros">
+                            <h4>✓ Pros</h4>
+                            <ul>
+                                <li>Focused learning</li>
+                                <li>Clean interface</li>
+                                <li>Mobile-friendly</li>
+                                <li>Guided progression</li>
+                            </ul>
+                        </div>
+                        <div class="cons">
+                            <h4>✗ Cons</h4>
+                            <ul>
+                                <li>Can't compare sections</li>
+                                <li>More clicks needed</li>
+                                <li>Might skip sections</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="rating">
+                        <span class="rating-label">Overall Rating:</span>
+                        <span class="stars">⭐⭐⭐</span>
+                    </div>
+                    <div class="best-for">
+                        <strong>Best For:</strong> Mobile users, easily distracted students
+                    </div>
+                    <a href="#" class="demo-link coming-soon">Coming Soon</a>
+                </div>
+            </div>
+
+            <!-- Version 6 -->
+            <div class="version-card">
+                <div class="version-header">
+                    <h2>Version 6: Horizontal Scroll</h2>
+                    <p class="tagline">Swipeable Cards with Quiz</p>
+                </div>
+                <div class="version-body">
+                    <div class="mockup">
+                        <div class="mockup-icon">👆</div>
+                        <p>[Card 1] ← → [Card 2] ← → [Card 3]<br>Swipe navigation<br>● ● ○ ○ ○ ○</p>
+                    </div>
+                    <div class="quiz-placement">
+                        <strong>Quiz Placement:</strong> Bottom of each card
+                    </div>
+                    <div class="pros-cons">
+                        <div class="pros">
+                            <h4>✓ Pros</h4>
+                            <ul>
+                                <li>Modern app-like feel</li>
+                                <li>Touch-friendly</li>
+                                <li>Clear sections</li>
+                                <li>Visual progress dots</li>
+                            </ul>
+                        </div>
+                        <div class="cons">
+                            <h4>✗ Cons</h4>
+                            <ul>
+                                <li>Unusual for web</li>
+                                <li>Hard to reference back</li>
+                                <li>Not printable</li>
+                                <li>Can be disorienting</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="rating">
+                        <span class="rating-label">Overall Rating:</span>
+                        <span class="stars">⭐⭐</span>
+                    </div>
+                    <div class="best-for">
+                        <strong>Best For:</strong> Tablet users, app-based learners
+                    </div>
+                    <a href="#" class="demo-link coming-soon">Coming Soon</a>
+                </div>
+            </div>
+
+            <!-- Version 7 -->
+            <div class="version-card">
+                <div class="version-header">
+                    <h2>Version 7: Tabbed Interface</h2>
+                    <p class="tagline">Tabs for Each Section + Quiz Tab</p>
+                </div>
+                <div class="version-body">
+                    <div class="mockup">
+                        <div class="mockup-icon">📑</div>
+                        <p>[Tab1✓] [Tab2✓] [Tab3] [Tab4] [Tab5] [Tab6] [Quiz]<br>Click to switch content</p>
+                    </div>
+                    <div class="quiz-placement">
+                        <strong>Quiz Placement:</strong> Dedicated quiz tab (last tab)
+                    </div>
+                    <div class="pros-cons">
+                        <div class="pros">
+                            <h4>✓ Pros</h4>
+                            <ul>
+                                <li>Very organized</li>
+                                <li>Easy navigation</li>
+                                <li>Compact layout</li>
+                                <li>Checkmarks show progress</li>
+                            </ul>
+                        </div>
+                        <div class="cons">
+                            <h4>✗ Cons</h4>
+                            <ul>
+                                <li>Hidden content</li>
+                                <li>Might miss sections</li>
+                                <li>Less linear</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="rating">
+                        <span class="rating-label">Overall Rating:</span>
+                        <span class="stars">⭐⭐⭐⭐</span>
+                    </div>
+                    <div class="best-for">
+                        <strong>Best For:</strong> Review and reference, non-linear learners
+                    </div>
+                    <a href="#" class="demo-link coming-soon">Coming Soon</a>
+                </div>
+            </div>
+
+            <!-- Version 8 -->
+            <div class="version-card">
+                <div class="version-header">
+                    <h2>Version 8: Minimalist</h2>
+                    <p class="tagline">Single Column with Inline Questions</p>
+                </div>
+                <div class="version-body">
+                    <div class="mockup">
+                        <div class="mockup-icon">📱</div>
+                        <p>One Column<br>Large Images<br>Quiz boxes scattered<br>Lots of whitespace</p>
+                    </div>
+                    <div class="quiz-placement">
+                        <strong>Quiz Placement:</strong> Inline questions throughout content
+                    </div>
+                    <div class="pros-cons">
+                        <div class="pros">
+                            <h4>✓ Pros</h4>
+                            <ul>
+                                <li>Ultra clean design</li>
+                                <li>Mobile-first</li>
+                                <li>Easy to read</li>
+                                <li>Highly accessible</li>
+                            </ul>
+                        </div>
+                        <div class="cons">
+                            <h4>✗ Cons</h4>
+                            <ul>
+                                <li>Less visual interest</li>
+                                <li>Longer scroll</li>
+                                <li>No advanced features</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="rating">
+                        <span class="rating-label">Overall Rating:</span>
+                        <span class="stars">⭐⭐⭐</span>
+                    </div>
+                    <div class="best-for">
+                        <strong>Best For:</strong> Accessibility, printing, simplicity
+                    </div>
+                    <a href="#" class="demo-link coming-soon">Coming Soon</a>
+                </div>
+            </div>
+
+            <!-- Version 9 -->
+            <div class="version-card recommended">
+                <div class="recommended-badge">MOST ENGAGING</div>
+                <div class="version-header" style="background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);">
+                    <h2>Version 9: Game-Style</h2>
+                    <p class="tagline">Levels, XP, Badges & Achievements</p>
+                </div>
+                <div class="version-body">
+                    <div class="mockup">
+                        <div class="mockup-icon">🎮</div>
+                        <p>🔓 Level 1 → Quiz → Unlock<br>🔓 Level 2 → Quiz → Unlock<br>🔒 Level 3 (Locked)<br>XP: 500/1000</p>
+                    </div>
+                    <div class="quiz-placement">
+                        <strong>Quiz Placement:</strong> Gatekeeper between levels (must complete)
+                    </div>
+                    <div class="pros-cons">
+                        <div class="pros">
+                            <h4>✓ Pros</h4>
+                            <ul>
+                                <li>Highly engaging</li>
+                                <li>Ensures completion</li>
+                                <li>Rewards & achievements</li>
+                                <li>Perfect for target age</li>
+                                <li>Clear progress</li>
+                            </ul>
+                        </div>
+                        <div class="cons">
+                            <h4>✗ Cons</h4>
+                            <ul>
+                                <li>More complex build</li>
+                                <li>Can't skip ahead</li>
+                                <li>More JavaScript</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="rating">
+                        <span class="rating-label">Overall Rating:</span>
+                        <span class="stars">⭐⭐⭐⭐⭐</span>
+                    </div>
+                    <div class="best-for">
+                        <strong>Best For:</strong> Maximum engagement for 8th-10th graders
+                    </div>
+                    <a href="v9_game_style.html" class="demo-link">View Demo</a>
+                </div>
+            </div>
+
+            <!-- Version 10 -->
+            <div class="version-card">
+                <div class="version-header">
+                    <h2>Version 10: Timeline</h2>
+                    <p class="tagline">Interactive Vertical Timeline</p>
+                </div>
+                <div class="version-body">
+                    <div class="mockup">
+                        <div class="mockup-icon">📍</div>
+                        <p>Timeline ● Sect1<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;● Quiz<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;● Sect2<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;● Sect3<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;● Quiz</p>
+                    </div>
+                    <div class="quiz-placement">
+                        <strong>Quiz Placement:</strong> Checkpoint nodes on timeline (every 2 sections)
+                    </div>
+                    <div class="pros-cons">
+                        <div class="pros">
+                            <h4>✓ Pros</h4>
+                            <ul>
+                                <li>Visual learning path</li>
+                                <li>Non-linear access</li>
+                                <li>Attractive design</li>
+                                <li>Completion markers</li>
+                            </ul>
+                        </div>
+                        <div class="cons">
+                            <h4>✗ Cons</h4>
+                            <ul>
+                                <li>Complex interaction</li>
+                                <li>Requires more clicks</li>
+                                <li>Might be confusing</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="rating">
+                        <span class="rating-label">Overall Rating:</span>
+                        <span class="stars">⭐⭐⭐</span>
+                    </div>
+                    <div class="best-for">
+                        <strong>Best For:</strong> Visual learners, structured paths
+                    </div>
+                    <a href="#" class="demo-link coming-soon">Coming Soon</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Section -->
+        <div class="summary">
+            <h2>Summary & Rankings</h2>
+
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <h3>By Learning Effectiveness</h3>
+                    <ol>
+                        <li><strong>Version 2</strong> - Mini-Quiz Per Section ⭐⭐⭐⭐⭐</li>
+                        <li><strong>Version 3</strong> - Split Quiz ⭐⭐⭐⭐</li>
+                        <li><strong>Version 9</strong> - Game-Style ⭐⭐⭐⭐⭐</li>
+                    </ol>
+                </div>
+
+                <div class="summary-card">
+                    <h3>By Student Engagement</h3>
+                    <ol>
+                        <li><strong>Version 9</strong> - Game-Style ⭐⭐⭐⭐⭐</li>
+                        <li><strong>Version 2</strong> - Mini-Quiz Per Section ⭐⭐⭐⭐⭐</li>
+                        <li><strong>Version 4</strong> - Sidebar + Floating ⭐⭐⭐⭐</li>
+                    </ol>
+                </div>
+
+                <div class="summary-card">
+                    <h3>By Ease of Use</h3>
+                    <ol>
+                        <li><strong>Version 1</strong> - Original ⭐⭐⭐⭐</li>
+                        <li><strong>Version 8</strong> - Minimalist ⭐⭐⭐⭐</li>
+                        <li><strong>Version 3</strong> - Split Quiz ⭐⭐⭐⭐</li>
+                    </ol>
+                </div>
+
+                <div class="summary-card">
+                    <h3>By Mobile-Friendliness</h3>
+                    <ol>
+                        <li><strong>Version 8</strong> - Minimalist ⭐⭐⭐⭐⭐</li>
+                        <li><strong>Version 5</strong> - Accordion ⭐⭐⭐⭐</li>
+                        <li><strong>Version 2</strong> - Mini-Quiz Per Section ⭐⭐⭐⭐</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div style="margin-top: 40px; padding: 30px; background: #f8f9fa; border-radius: 10px; border-left: 5px solid #667eea;">
+                <h3 style="color: #667eea; margin-bottom: 20px; font-size: 1.5em;">🏆 Top 3 Recommendations</h3>
+                <ol style="font-size: 1.1em; line-height: 2; margin-left: 20px;">
+                    <li><strong style="color: #28a745;">Version 2 - Mini-Quiz After Each Section</strong><br>
+                        <em style="color: #666;">Best for learning retention through immediate reinforcement</em>
+                    </li>
+                    <li><strong style="color: #ff6b6b;">Version 9 - Game-Style Progression</strong><br>
+                        <em style="color: #666;">Most engaging for 8th-10th graders with gamification</em>
+                    </li>
+                    <li><strong style="color: #667eea;">Version 3 - Split Quiz</strong><br>
+                        <em style="color: #666;">Great balance of learning chunks and natural breaks</em>
+                    </li>
+                </ol>
+                <p style="margin-top: 20px; color: #666;">
+                    <strong>Note:</strong> Full demos are available for Versions 1, 2, 3, and 9.
+                    Other versions are available upon request.
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
