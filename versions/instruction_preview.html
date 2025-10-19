@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Self-Guided Instructions Preview</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #e53935 0%, #e35d5b 100%);
+            color: white;
+            padding: 30px 40px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.2em;
+            opacity: 0.95;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .feature-preview {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+        }
+
+        .feature-header h2 {
+            font-size: 1.8em;
+            margin-bottom: 5px;
+        }
+
+        .feature-header p {
+            opacity: 0.9;
+            font-size: 1.05em;
+        }
+
+        /* Feature 1: Step-by-Step with Checkboxes */
+        .step-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .step-item {
+            background: #f8f9fa;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            border-left: 5px solid #667eea;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .step-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .step-item.completed {
+            background: #d4edda;
+            border-left-color: #28a745;
+            opacity: 0.8;
+        }
+
+        .step-checkbox {
+            width: 24px;
+            height: 24px;
+            min-width: 24px;
+            cursor: pointer;
+            margin-top: 2px;
+        }
+
+        .step-number {
+            background: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            min-width: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-top: 2px;
+        }
+
+        .step-item.completed .step-number {
+            background: #28a745;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-content h4 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 1.15em;
+        }
+
+        .step-content p {
+            color: #666;
+            line-height: 1.6;
+            font-size: 0.95em;
+        }
+
+        /* Feature 2: Practice Challenges */
+        .practice-challenge {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            padding: 25px;
+            border-radius: 15px;
+            margin-top: 30px;
+            color: white;
+        }
+
+        .practice-challenge h3 {
+            font-size: 1.6em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .challenge-task {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .challenge-task h4 {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+
+        .challenge-task ul {
+            margin-left: 25px;
+            line-height: 1.8;
+        }
+
+        .success-criteria {
+            background: rgba(40, 167, 69, 0.3);
+            padding: 15px 20px;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            margin-top: 15px;
+        }
+
+        .success-criteria strong {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+
+        .challenge-complete-btn {
+            background: white;
+            color: #f5576c;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1.05em;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .challenge-complete-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .challenge-complete-btn.completed {
+            background: #28a745;
+            color: white;
+        }
+
+        /* Feature 3: Annotated Images */
+        .annotated-image-container {
+            position: relative;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .annotated-image {
+            width: 100%;
+            max-width: 900px;
+            max-height: 400px;
+            object-fit: contain;
+            border-radius: 10px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .annotation {
+            position: absolute;
+            background: #e53935;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .annotation:hover {
+            transform: scale(1.1);
+            background: #c62828;
+        }
+
+        .annotation::after {
+            content: '';
+            position: absolute;
+            width: 2px;
+            height: 30px;
+            background: #e53935;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .annotation-dot {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: #e53935;
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            animation: pulse 2s infinite;
+            z-index: 10;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 0.8;
+            }
+        }
+
+        .annotation-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 20;
+        }
+
+        .annotation-dot:hover .annotation-tooltip {
+            opacity: 1;
+        }
+
+        /* Feature 4: Progress & Time Tracking */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .section-title {
+            flex: 1;
+        }
+
+        .section-title h3 {
+            color: #333;
+            font-size: 1.6em;
+            margin-bottom: 5px;
+        }
+
+        .section-meta {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .time-estimate {
+            background: #667eea;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .difficulty-badge {
+            background: #ffc107;
+            color: #333;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        .difficulty-badge.easy {
+            background: #28a745;
+            color: white;
+        }
+
+        .difficulty-badge.medium {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .difficulty-badge.hard {
+            background: #dc3545;
+            color: white;
+        }
+
+        .progress-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 25px;
+            border-radius: 15px;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .progress-header h3 {
+            font-size: 1.4em;
+        }
+
+        .progress-percentage {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .progress-bar {
+            background: rgba(255, 255, 255, 0.3);
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, #ffd700, #ffed4e);
+            height: 100%;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 10px;
+            color: #333;
+            font-weight: bold;
+            font-size: 0.85em;
+        }
+
+        .progress-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-box .stat-number {
+            font-size: 1.8em;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .stat-box .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        /* Common Mistakes Alert Box */
+        .alert-box {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-left: 5px solid #ffc107;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .alert-box h4 {
+            color: #856404;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert-box ul {
+            margin-left: 25px;
+            color: #856404;
+            line-height: 1.8;
+        }
+
+        /* Navigation */
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 2px solid #e9ecef;
+        }
+
+        .nav-btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 1.05em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-btn.prev {
+            background: #6c757d;
+            color: white;
+        }
+
+        .nav-btn.next {
+            background: #28a745;
+            color: white;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        @media (max-width: 768px) {
+            .section-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .section-meta {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .progress-stats {
+                grid-template-columns: 1fr;
+            }
+
+            .annotation {
+                font-size: 0.75em;
+                padding: 6px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 Self-Guided Instruction Preview</h1>
+            <p>4 Key Features to Help Students Learn Independently</p>
+        </header>
+
+        <div class="content">
+            <!-- Overall Progress Tracking -->
+            <div class="progress-section">
+                <div class="progress-header">
+                    <h3>📊 Your Learning Progress</h3>
+                    <span class="progress-percentage" id="overall-percentage">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="overall-progress" style="width: 0%">0%</div>
+                </div>
+                <div class="progress-stats">
+                    <div class="stat-box">
+                        <span class="stat-number" id="completed-steps">0</span>
+                        <span class="stat-label">Steps Completed</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-number" id="total-time">0</span>
+                        <span class="stat-label">Minutes Spent</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-number" id="challenges-done">0/2</span>
+                        <span class="stat-label">Challenges Done</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feature 1: Step-by-Step with Checkboxes -->
+            <div class="feature-preview">
+                <div class="feature-header">
+                    <h2>Feature 1: Step-by-Step Action Items with Checkboxes</h2>
+                    <p>Clear, actionable steps students can check off as they progress</p>
+                </div>
+
+                <div class="section-header">
+                    <div class="section-title">
+                        <h3>🎯 Learning the Mezzanine</h3>
+                    </div>
+                    <div class="section-meta">
+                        <div class="time-estimate">
+                            ⏱️ 5 minutes
+                        </div>
+                        <div class="difficulty-badge easy">
+                            ⭐ Easy
+                        </div>
+                    </div>
+                </div>
+
+                <p style="color: #666; margin-bottom: 20px; line-height: 1.8;">
+                    Follow these steps to explore the Mezzanine panel at the top of Roblox Studio. Check off each step as you complete it!
+                </p>
+
+                <ul class="step-list">
+                    <li class="step-item" data-step="1">
+                        <input type="checkbox" class="step-checkbox" onchange="toggleStep(this)">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h4>Open Roblox Studio</h4>
+                            <p>Launch Roblox Studio from your desktop. If you don't have it installed, download it from <strong>create.roblox.com</strong></p>
+                        </div>
+                    </li>
+                    <li class="step-item" data-step="2">
+                        <input type="checkbox" class="step-checkbox" onchange="toggleStep(this)">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h4>Look at the very top of your screen</h4>
+                            <p>The Mezzanine is the horizontal bar running across the top. You should see tabs like "Model", "Avatar", "Script", and "UI".</p>
+                        </div>
+                    </li>
+                    <li class="step-item" data-step="3">
+                        <input type="checkbox" class="step-checkbox" onchange="toggleStep(this)">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h4>Click on different tabs</h4>
+                            <p>Try clicking on the "Model" tab, then "Avatar" tab. Notice how the toolbar below changes to show different tools.</p>
+                        </div>
+                    </li>
+                    <li class="step-item" data-step="4">
+                        <input type="checkbox" class="step-checkbox" onchange="toggleStep(this)">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <h4>Find the playtest buttons</h4>
+                            <p>On the left side of the Mezzanine, locate the green "Play" button and the "Pause" button. These let you test your game!</p>
+                        </div>
+                    </li>
+                    <li class="step-item" data-step="5">
+                        <input type="checkbox" class="step-checkbox" onchange="toggleStep(this)">
+                        <div class="step-number">5</div>
+                        <div class="step-content">
+                            <h4>Check for the Assistant icon</h4>
+                            <p>On the right side, you might see an "Assistant" icon that looks like a lightbulb or robot. This is your AI helper!</p>
+                        </div>
+                    </li>
+                </ul>
+
+                <div class="alert-box">
+                    <h4>⚠️ Watch Out - Common Mistakes</h4>
+                    <ul>
+                        <li><strong>Can't find the Mezzanine?</strong> Make sure you're in the main Studio window, not the startup screen</li>
+                        <li><strong>Tabs not changing?</strong> You might need to wait a second for Studio to load the tools</li>
+                        <li><strong>Playtest buttons disabled?</strong> You need to have a place/game open first</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Feature 3: Annotated Images -->
+            <div class="feature-preview">
+                <div class="feature-header">
+                    <h2>Feature 3: Visual Annotations on Images</h2>
+                    <p>Highlighted screenshots with interactive markers to guide students</p>
+                </div>
+
+                <p style="color: #666; margin-bottom: 20px; line-height: 1.8;">
+                    Hover over the numbered dots to see what each part of the interface does!
+                </p>
+
+                <div class="annotated-image-container">
+                    <img src="../roblox_docs_data/images/Mezzanine.jpg" alt="Mezzanine Annotated" class="annotated-image">
+
+                    <!-- Annotation Dots with Tooltips -->
+                    <div class="annotation-dot" style="top: 15%; left: 10%;">
+                        <div class="annotation-tooltip" style="top: -40px; left: 50%; transform: translateX(-50%);">
+                            1. Playtest Buttons - Test your game!
+                        </div>
+                    </div>
+
+                    <div class="annotation-dot" style="top: 15%; left: 30%;">
+                        <div class="annotation-tooltip" style="top: -40px; left: 50%; transform: translateX(-50%);">
+                            2. Tab Selector - Switch between editors
+                        </div>
+                    </div>
+
+                    <div class="annotation-dot" style="top: 15%; left: 50%;">
+                        <div class="annotation-tooltip" style="top: -40px; left: 50%; transform: translateX(-50%);">
+                            3. Active Tab - Currently selected editor
+                        </div>
+                    </div>
+
+                    <div class="annotation-dot" style="top: 15%; left: 85%;">
+                        <div class="annotation-tooltip" style="top: -40px; right: 0;">
+                            4. Assistant Icon - Get AI help
+                        </div>
+                    </div>
+                </div>
+
+                <p style="color: #666; margin-top: 15px; text-align: center; font-style: italic;">
+                    Click the image to see it full-screen for more details!
+                </p>
+            </div>
+
+            <!-- Feature 2: Practice Challenges -->
+            <div class="feature-preview">
+                <div class="feature-header">
+                    <h2>Feature 2: Hands-On Practice Challenges</h2>
+                    <p>Interactive tasks that reinforce what students just learned</p>
+                </div>
+
+                <div class="practice-challenge">
+                    <h3>🎯 Practice Challenge #1</h3>
+
+                    <div class="challenge-task">
+                        <h4>Your Mission:</h4>
+                        <p>Complete these tasks using the Mezzanine panel:</p>
+                        <ul>
+                            <li>Switch to the "Model" tab</li>
+                            <li>Then switch to the "UI" tab</li>
+                            <li>Find and hover over the Play button (don't click it yet!)</li>
+                            <li>Look for the Assistant icon on the right side</li>
+                        </ul>
+                    </div>
+
+                    <div class="success-criteria">
+                        <strong>✅ You'll know you did it right when:</strong>
+                        <p>You can see different tools in the toolbar below when you switch tabs, and you can clearly identify the green Play button and Assistant icon.</p>
+                    </div>
+
+                    <button class="challenge-complete-btn" onclick="completeChallenge(1, this)">
+                        ✓ I Completed This Challenge
+                    </button>
+                </div>
+            </div>
+
+            <!-- Feature 4: Time & Progress Tracking (shown at section level) -->
+            <div class="feature-preview">
+                <div class="feature-header">
+                    <h2>Feature 4: Progress & Time Tracking</h2>
+                    <p>Shows students how far they've come and motivates them to continue</p>
+                </div>
+
+                <p style="color: #666; margin-bottom: 20px; line-height: 1.8;">
+                    The progress bar at the top updates automatically as you complete steps and challenges. Each section shows:
+                </p>
+
+                <ul style="color: #666; margin-left: 25px; line-height: 2; margin-bottom: 20px;">
+                    <li><strong>⏱️ Time Estimate:</strong> How long this section typically takes</li>
+                    <li><strong>⭐ Difficulty Level:</strong> Easy, Medium, or Advanced</li>
+                    <li><strong>📊 Completion Percentage:</strong> Visual progress indicator</li>
+                    <li><strong>✓ Steps Completed:</strong> How many actions you've finished</li>
+                </ul>
+
+                <div class="alert-box" style="background: #d1ecf1; border-color: #0c5460;">
+                    <h4 style="color: #0c5460;">💡 Pro Tip</h4>
+                    <p style="color: #0c5460; margin: 0;">Try to complete all steps in a section before taking a break. This helps you remember what you learned and makes it easier to pick up where you left off!</p>
+                </div>
+            </div>
+
+            <!-- Another Practice Challenge -->
+            <div class="feature-preview">
+                <div class="feature-header">
+                    <h2>Practice Challenge Example #2</h2>
+                    <p>Another hands-on challenge to reinforce learning</p>
+                </div>
+
+                <div class="practice-challenge">
+                    <h3>🎯 Practice Challenge #2</h3>
+
+                    <div class="challenge-task">
+                        <h4>Your Mission:</h4>
+                        <p>Now that you know the Mezzanine, let's explore the Toolbar:</p>
+                        <ul>
+                            <li>Make sure you're on the "Home" tab in the Mezzanine</li>
+                            <li>Look at the toolbar directly below the Mezzanine</li>
+                            <li>Count how many tool icons you can see</li>
+                            <li>Find the "Part" button (it usually shows a gray cube)</li>
+                        </ul>
+                    </div>
+
+                    <div class="success-criteria">
+                        <strong>✅ You'll know you did it right when:</strong>
+                        <p>You can see a toolbar with multiple icons below the Mezzanine tabs, and you've located the Part button that lets you create basic 3D shapes.</p>
+                    </div>
+
+                    <button class="challenge-complete-btn" onclick="completeChallenge(2, this)">
+                        ✓ I Completed This Challenge
+                    </button>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="navigation">
+                <button class="nav-btn prev" disabled>
+                    ← Previous Section
+                </button>
+                <button class="nav-btn next" id="next-btn" disabled>
+                    Next Section: The Toolbar →
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let completedSteps = 0;
+        let totalSteps = 5;
+        let challengesCompleted = 0;
+        let totalChallenges = 2;
+        let timeSpent = 0;
+
+        // Start time tracking
+        setInterval(() => {
+            timeSpent++;
+            document.getElementById('total-time').textContent = Math.floor(timeSpent / 60);
+        }, 1000);
+
+        function toggleStep(checkbox) {
+            const stepItem = checkbox.closest('.step-item');
+
+            if (checkbox.checked) {
+                stepItem.classList.add('completed');
+                completedSteps++;
+            } else {
+                stepItem.classList.remove('completed');
+                completedSteps--;
+            }
+
+            updateProgress();
+        }
+
+        function completeChallenge(challengeNum, button) {
+            if (!button.classList.contains('completed')) {
+                button.classList.add('completed');
+                button.textContent = '✓ Challenge Completed!';
+                challengesCompleted++;
+
+                document.getElementById('challenges-done').textContent =
+                    `${challengesCompleted}/${totalChallenges}`;
+
+                updateProgress();
+            }
+        }
+
+        function updateProgress() {
+            // Calculate overall progress
+            const stepProgress = (completedSteps / totalSteps) * 50; // 50% weight
+            const challengeProgress = (challengesCompleted / totalChallenges) * 50; // 50% weight
+            const totalProgress = Math.round(stepProgress + challengeProgress);
+
+            // Update progress bar
+            const progressFill = document.getElementById('overall-progress');
+            progressFill.style.width = totalProgress + '%';
+            progressFill.textContent = totalProgress + '%';
+
+            // Update percentage display
+            document.getElementById('overall-percentage').textContent = totalProgress + '%';
+
+            // Update completed steps
+            document.getElementById('completed-steps').textContent = completedSteps;
+
+            // Enable next button if progress is 100%
+            const nextBtn = document.getElementById('next-btn');
+            if (totalProgress === 100) {
+                nextBtn.disabled = false;
+                nextBtn.style.background = '#28a745';
+            } else {
+                nextBtn.disabled = true;
+                nextBtn.style.background = '#6c757d';
+            }
+        }
+
+        // Initialize
+        updateProgress();
+    </script>
+</body>
+</html>

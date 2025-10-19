@@ -28,7 +28,7 @@
         }
 
         header {
-            background: linear-gradient(135deg, #e53935 0%, #e35d5b 100%);
+            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
             color: white;
             padding: 30px 40px;
             position: relative;
@@ -70,7 +70,7 @@
 
         .stat-value {
             background: white;
-            color: #e53935;
+            color: #ff6b35;
             padding: 5px 15px;
             border-radius: 20px;
             font-weight: bold;
@@ -124,7 +124,7 @@
             padding: 30px;
             border-radius: 15px;
             margin-bottom: 30px;
-            border-left: 5px solid #e53935;
+            border-left: 5px solid #ff6b35;
         }
 
         .intro h2 {
@@ -341,7 +341,7 @@
         }
 
         .close-modal:hover {
-            background: rgba(229, 57, 53, 0.8);
+            background: rgba(255, 107, 53, 0.8);
             transform: rotate(90deg);
         }
 
@@ -355,6 +355,261 @@
             background: rgba(0, 0, 0, 0.6);
             padding: 10px 20px;
             border-radius: 20px;
+        }
+
+        /* Feature 1: Step-by-Step Checkboxes */
+        .step-list {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 20px;
+        }
+
+        .step-item {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            margin-bottom: 12px;
+            border-radius: 10px;
+            border-left: 5px solid #667eea;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .step-item:hover {
+            background: #e9ecef;
+            transform: translateX(3px);
+        }
+
+        .step-item.completed {
+            background: #d4edda;
+            border-left-color: #28a745;
+            opacity: 0.85;
+        }
+
+        .step-checkbox {
+            width: 20px;
+            height: 20px;
+            min-width: 20px;
+            cursor: pointer;
+            margin-top: 3px;
+        }
+
+        .step-number {
+            background: #667eea;
+            color: white;
+            width: 28px;
+            height: 28px;
+            min-width: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9em;
+            margin-top: 2px;
+        }
+
+        .step-item.completed .step-number {
+            background: #28a745;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-content h4 {
+            color: #333;
+            margin-bottom: 6px;
+            font-size: 1.05em;
+        }
+
+        .step-content p {
+            color: #666;
+            line-height: 1.6;
+            font-size: 0.95em;
+            margin: 0;
+        }
+
+        /* Feature 2: Practice Challenges */
+        .practice-challenge {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            padding: 25px;
+            border-radius: 15px;
+            margin-top: 25px;
+            color: white;
+        }
+
+        .practice-challenge h3 {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+        }
+
+        .challenge-task {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 18px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .challenge-task h4 {
+            font-size: 1.15em;
+            margin-bottom: 10px;
+        }
+
+        .challenge-task ul {
+            margin-left: 25px;
+            line-height: 1.8;
+        }
+
+        .success-criteria {
+            background: rgba(40, 167, 69, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            margin-top: 12px;
+        }
+
+        .success-criteria strong {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 1.05em;
+        }
+
+        .challenge-complete-btn {
+            background: white;
+            color: #f5576c;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1.05em;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .challenge-complete-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .challenge-complete-btn.completed {
+            background: #28a745;
+            color: white;
+        }
+
+        /* Feature 3: Image Annotations */
+        .annotated-image-wrapper {
+            position: relative;
+            display: inline-block;
+            margin: 20px auto;
+        }
+
+        .annotation-dot {
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            background: #ff6b35;
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            animation: pulse 2s infinite;
+            z-index: 10;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.15);
+                opacity: 0.8;
+            }
+        }
+
+        .annotation-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.85em;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 20;
+            bottom: 35px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .annotation-dot:hover .annotation-tooltip {
+            opacity: 1;
+        }
+
+        /* Feature 4: Section Progress */
+        .section-meta {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .time-estimate {
+            background: #667eea;
+            color: white;
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .difficulty-badge {
+            background: #28a745;
+            color: white;
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        /* Alert/Warning Boxes */
+        .alert-box {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-left: 5px solid #ffc107;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+
+        .alert-box h4 {
+            color: #856404;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .alert-box ul {
+            margin-left: 25px;
+            color: #856404;
+            line-height: 1.7;
+        }
+
+        .alert-box p {
+            color: #856404;
+            margin: 0;
+            line-height: 1.7;
         }
 
         .key-controls {
@@ -668,27 +923,68 @@
                     </div>
                 </div>
                 <div class="level-content">
+                    <!-- Feature 4: Time & Difficulty -->
+                    <div class="section-meta">
+                        <div class="time-estimate">⏱️ 5 minutes</div>
+                        <div class="difficulty-badge">⭐ Easy</div>
+                    </div>
+
+                    <p style="color: #666; line-height: 1.8; margin-bottom: 20px;">
+                        The <strong>Mezzanine</strong> is located at the very top of the Studio window. Think of it as your
+                        mission control center! Follow these steps to explore it.
+                    </p>
+
+                    <!-- Feature 1: Step-by-Step with Checkboxes -->
+                    <ul class="step-list">
+                        <li class="step-item" data-level="1" data-step="1">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(1, 1, this)">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>Open Roblox Studio</h4>
+                                <p>Launch Roblox Studio from your desktop or download it from create.roblox.com</p>
+                            </div>
+                        </li>
+                        <li class="step-item" data-level="1" data-step="2">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(1, 2, this)">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>Look at the very top of your screen</h4>
+                                <p>The Mezzanine is the horizontal bar at the top. You'll see tabs like "Model", "Avatar", "Script", and "UI"</p>
+                            </div>
+                        </li>
+                        <li class="step-item" data-level="1" data-step="3">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(1, 3, this)">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>Click on different tabs</h4>
+                                <p>Try clicking "Model" then "Avatar". Notice how the toolbar below changes to show different tools</p>
+                            </div>
+                        </li>
+                        <li class="step-item" data-level="1" data-step="4">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(1, 4, this)">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h4>Find the playtest buttons</h4>
+                                <p>On the left side, locate the green "Play" button. This lets you test your game!</p>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <!-- Image Section -->
                     <div class="section-content">
-                        <div class="section-text">
-                            <p>
-                                The <strong>Mezzanine</strong> is located at the very top of the Studio window. Think of it as your
-                                mission control center!
-                            </p>
-                            <p><strong>What you'll find here:</strong></p>
-                            <ul>
-                                <li><strong>Playtest Options:</strong> Test your game right from Studio</li>
-                                <li><strong>Tab Selector:</strong> Switch between Model, Avatar, Script, and UI editors</li>
-                                <li><strong>Collaborator Info:</strong> See who else is working on your game</li>
-                                <li><strong>Assistant Tool:</strong> Get AI-powered help while building</li>
-                            </ul>
-                            <p>
-                                This is where you'll quickly jump between different modes and test your creations!
-                            </p>
-                        </div>
                         <div class="section-image">
-                            <img src="../roblox_docs_data/images/Mezzanine.jpg" alt="Roblox Studio Mezzanine">
-                            <p>The Mezzanine at the top of Studio</p>
+                            <img src="../roblox_docs_data/images/Mezzanine.jpg" alt="Roblox Studio Mezzanine" onclick="openImageModal(this.src)">
+                            <p>The Mezzanine at the top of Studio - Click to zoom in!</p>
                         </div>
+                    </div>
+
+                    <!-- Common Mistakes Alert -->
+                    <div class="alert-box">
+                        <h4>⚠️ Watch Out - Common Mistakes</h4>
+                        <ul>
+                            <li><strong>Can't find the Mezzanine?</strong> Make sure you're in the main Studio window, not the startup screen</li>
+                            <li><strong>Tabs not changing?</strong> Wait a second for Studio to load the tools</li>
+                        </ul>
                     </div>
 
                     <div class="level-quiz">
@@ -722,29 +1018,68 @@
                     </div>
                 </div>
                 <div class="level-content">
+                    <!-- Time & Difficulty -->
+                    <div class="section-meta">
+                        <div class="time-estimate">⏱️ 5 minutes</div>
+                        <div class="difficulty-badge">⭐ Easy</div>
+                    </div>
+
+                    <p style="color: #666; line-height: 1.8; margin-bottom: 20px;">
+                        Right below the Mezzanine, you'll find the <strong>Toolbar</strong>. This is your toolbox filled
+                        with everything you need to create! Follow these steps to explore it.
+                    </p>
+
+                    <!-- Step-by-Step Checklist -->
+                    <ul class="step-list">
+                        <li class="step-item" data-level="2" data-step="1">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(2, 1, this)">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>Locate the Toolbar</h4>
+                                <p>Look directly below the Mezzanine. You'll see a row of tool icons and buttons</p>
+                            </div>
+                        </li>
+                        <li class="step-item" data-level="2" data-step="2">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(2, 2, this)">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>Switch to the "Home" tab in the Mezzanine</h4>
+                                <p>The Toolbar content changes based on which Mezzanine tab is active. Click "Home" to see basic building tools</p>
+                            </div>
+                        </li>
+                        <li class="step-item" data-level="2" data-step="3">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(2, 3, this)">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>Try the "Model" tab</h4>
+                                <p>Click "Model" in the Mezzanine and notice how the Toolbar shows different 3D object tools</p>
+                            </div>
+                        </li>
+                        <li class="step-item" data-level="2" data-step="4">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(2, 4, this)">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h4>Explore the "UI" tab</h4>
+                                <p>Click the "UI" tab to see tools for creating buttons, text labels, and interfaces</p>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <!-- Image Section -->
                     <div class="section-content">
-                        <div class="section-text">
-                            <p>
-                                Right below the Mezzanine, you'll find the <strong>Toolbar</strong>. This is your toolbox filled
-                                with everything you need to create!
-                            </p>
-                            <p><strong>The Toolbar is organized into tabs:</strong></p>
-                            <ul>
-                                <li><strong>Home:</strong> Basic building tools and commands</li>
-                                <li><strong>Model:</strong> Tools for creating and editing 3D objects</li>
-                                <li><strong>Avatar:</strong> Character and animation tools</li>
-                                <li><strong>UI:</strong> Create user interfaces and menus</li>
-                                <li><strong>Script:</strong> Coding and scripting tools</li>
-                                <li><strong>Plugins:</strong> Additional tools you can add</li>
-                            </ul>
-                            <p>
-                                Each tab contains specific tools grouped by function - super organized!
-                            </p>
-                        </div>
                         <div class="section-image">
-                            <img src="../roblox_docs_data/images/Toolbar.jpg" alt="Roblox Studio Toolbar">
-                            <p>The Toolbar with organized tabs</p>
+                            <img src="../roblox_docs_data/images/Toolbar.jpg" alt="Roblox Studio Toolbar" onclick="openImageModal(this.src)">
+                            <p>The Toolbar with organized tabs - Click to zoom in!</p>
                         </div>
+                    </div>
+
+                    <!-- Common Mistakes Alert -->
+                    <div class="alert-box">
+                        <h4>⚠️ Watch Out - Common Mistakes</h4>
+                        <ul>
+                            <li><strong>Can't see the Toolbar?</strong> Make sure Roblox Studio is fully loaded and a place is open</li>
+                            <li><strong>Tools look different?</strong> The Toolbar changes based on which Mezzanine tab you have selected</li>
+                        </ul>
                     </div>
 
                     <div class="level-quiz">
@@ -778,59 +1113,106 @@
                     </div>
                 </div>
                 <div class="level-content">
-                    <div class="section-content">
-                        <div class="section-text">
-                            <p>
-                                The <strong>3D Viewport</strong> is the big area in the center of your screen - this is where the
-                                magic happens! It's your window into the 3D world you're creating.
-                            </p>
-                            <p>
-                                You'll spend most of your time here, viewing and editing your game in 3D space. Learning to navigate
-                                this viewport is essential!
-                            </p>
+                    <!-- Time & Difficulty -->
+                    <div class="section-meta">
+                        <div class="time-estimate">⏱️ 6 minutes</div>
+                        <div class="difficulty-badge">⭐ Easy</div>
+                    </div>
 
-                            <div class="key-controls">
-                                <h4>Essential Camera Controls</h4>
-                                <div class="controls-grid">
-                                    <div class="control-item">
-                                        <span>Move Forward</span>
-                                        <span class="key">W</span>
-                                    </div>
-                                    <div class="control-item">
-                                        <span>Move Left</span>
-                                        <span class="key">A</span>
-                                    </div>
-                                    <div class="control-item">
-                                        <span>Move Backward</span>
-                                        <span class="key">S</span>
-                                    </div>
-                                    <div class="control-item">
-                                        <span>Move Right</span>
-                                        <span class="key">D</span>
-                                    </div>
-                                    <div class="control-item">
-                                        <span>Move Up</span>
-                                        <span class="key">E</span>
-                                    </div>
-                                    <div class="control-item">
-                                        <span>Move Down</span>
-                                        <span class="key">Q</span>
-                                    </div>
-                                    <div class="control-item">
-                                        <span>Focus on Object</span>
-                                        <span class="key">F</span>
-                                    </div>
-                                    <div class="control-item">
-                                        <span>Rotate View</span>
-                                        <span class="key">Right Click + Drag</span>
-                                    </div>
-                                </div>
+                    <p style="color: #666; line-height: 1.8; margin-bottom: 20px;">
+                        The <strong>3D Viewport</strong> is the big area in the center of your screen - this is where the
+                        magic happens! It's your window into the 3D world you're creating. Follow these steps to learn the controls.
+                    </p>
+
+                    <!-- Step-by-Step Checklist -->
+                    <ul class="step-list">
+                        <li class="step-item" data-level="3" data-step="1">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(3, 1, this)">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>Find the 3D Viewport</h4>
+                                <p>Look at the large center area of Roblox Studio. This is where you'll see your 3D game world</p>
+                            </div>
+                        </li>
+                        <li class="step-item" data-level="3" data-step="2">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(3, 2, this)">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>Practice moving with W, A, S, D keys</h4>
+                                <p>Hold W to move forward, A to move left, S to move backward, D to move right. Try it!</p>
+                            </div>
+                        </li>
+                        <li class="step-item" data-level="3" data-step="3">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(3, 3, this)">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>Try rotating your view</h4>
+                                <p>Right-click and drag your mouse to rotate the camera and look around</p>
+                            </div>
+                        </li>
+                        <li class="step-item" data-level="3" data-step="4">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(3, 4, this)">
+                            <div class="step-content">
+                                <h4>Use the F key to focus</h4>
+                                <p>Click on any object in your scene, then press F to focus your camera on it</p>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <!-- Key Controls Reference -->
+                    <div class="key-controls">
+                        <h4>Essential Camera Controls</h4>
+                        <div class="controls-grid">
+                            <div class="control-item">
+                                <span>Move Forward</span>
+                                <span class="key">W</span>
+                            </div>
+                            <div class="control-item">
+                                <span>Move Left</span>
+                                <span class="key">A</span>
+                            </div>
+                            <div class="control-item">
+                                <span>Move Backward</span>
+                                <span class="key">S</span>
+                            </div>
+                            <div class="control-item">
+                                <span>Move Right</span>
+                                <span class="key">D</span>
+                            </div>
+                            <div class="control-item">
+                                <span>Move Up</span>
+                                <span class="key">E</span>
+                            </div>
+                            <div class="control-item">
+                                <span>Move Down</span>
+                                <span class="key">Q</span>
+                            </div>
+                            <div class="control-item">
+                                <span>Focus on Object</span>
+                                <span class="key">F</span>
+                            </div>
+                            <div class="control-item">
+                                <span>Rotate View</span>
+                                <span class="key">Right Click + Drag</span>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Image Section -->
+                    <div class="section-content">
                         <div class="section-image">
-                            <img src="../roblox_docs_data/images/3D-Viewport.jpg" alt="Roblox Studio 3D Viewport">
-                            <p>The 3D Viewport - your creative workspace</p>
+                            <img src="../roblox_docs_data/images/3D-Viewport.jpg" alt="Roblox Studio 3D Viewport" onclick="openImageModal(this.src)">
+                            <p>The 3D Viewport - your creative workspace - Click to zoom in!</p>
                         </div>
+                    </div>
+
+                    <!-- Common Mistakes Alert -->
+                    <div class="alert-box">
+                        <h4>⚠️ Watch Out - Common Mistakes</h4>
+                        <ul>
+                            <li><strong>Camera moving too fast or slow?</strong> You can adjust camera speed in File → Studio Settings → Camera</li>
+                            <li><strong>Can't rotate the view?</strong> Make sure you're right-clicking (not left-clicking) and dragging</li>
+                        </ul>
                     </div>
 
                     <div class="level-quiz">
@@ -864,28 +1246,68 @@
                     </div>
                 </div>
                 <div class="level-content">
+                    <!-- Time & Difficulty -->
+                    <div class="section-meta">
+                        <div class="time-estimate">⏱️ 5 minutes</div>
+                        <div class="difficulty-badge">⭐ Easy</div>
+                    </div>
+
+                    <p style="color: #666; line-height: 1.8; margin-bottom: 20px;">
+                        The <strong>Toolbox</strong> is your asset library - it's like a huge catalog of building materials,
+                        models, and resources! Follow these steps to explore it.
+                    </p>
+
+                    <!-- Step-by-Step Checklist -->
+                    <ul class="step-list">
+                        <li class="step-item" data-level="4" data-step="1">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(4, 1, this)">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>Open the Toolbox</h4>
+                                <p>Go to View menu → Toolbox, or look for the Toolbox panel (usually on the left side of Studio)</p>
+                            </div>
+                        </li>
+                        <li class="step-item" data-level="4" data-step="2">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(4, 2, this)">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>Click on the "Creator Store" tab</h4>
+                                <p>This tab lets you browse thousands of free models, meshes, and audio created by the Roblox community</p>
+                            </div>
+                        </li>
+                        <li class="step-item" data-level="4" data-step="3">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(4, 3, this)">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>Try searching for something</h4>
+                                <p>Type "tree" in the search box and browse the results. Click any model to add it to your game!</p>
+                            </div>
+                        </li>
+                        <li class="step-item" data-level="4" data-step="4">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(4, 4, this)">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h4>Check out the other tabs</h4>
+                                <p>Explore Inventory (your assets), Recent (recently used), and Creations (your saved models)</p>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <!-- Image Section -->
                     <div class="section-content">
-                        <div class="section-text">
-                            <p>
-                                The <strong>Toolbox</strong> is your asset library - it's like a huge catalog of building materials,
-                                models, and resources!
-                            </p>
-                            <p><strong>The Toolbox has four main tabs:</strong></p>
-                            <ul>
-                                <li><strong>Creator Store:</strong> Browse thousands of free models, meshes, audio, and more created
-                                by the Roblox community</li>
-                                <li><strong>Inventory:</strong> Access assets you own or have purchased</li>
-                                <li><strong>Recent:</strong> Quickly find assets you've used recently</li>
-                                <li><strong>Creations:</strong> Your personal creations and saved models</li>
-                            </ul>
-                            <p>
-                                Pro tip: The Creator Store is perfect for finding pre-made objects to speed up your building!
-                            </p>
-                        </div>
                         <div class="section-image">
-                            <img src="../roblox_docs_data/images/Toolbox.jpg" alt="Roblox Studio Toolbox">
-                            <p>The Toolbox - your asset library</p>
+                            <img src="../roblox_docs_data/images/Toolbox.jpg" alt="Roblox Studio Toolbox" onclick="openImageModal(this.src)">
+                            <p>The Toolbox - your asset library - Click to zoom in!</p>
                         </div>
+                    </div>
+
+                    <!-- Common Mistakes Alert -->
+                    <div class="alert-box">
+                        <h4>⚠️ Watch Out - Common Mistakes</h4>
+                        <ul>
+                            <li><strong>Can't find the Toolbox?</strong> Go to View → Toolbox to make it visible</li>
+                            <li><strong>Can't insert models?</strong> Make sure you have an active place/game open in Studio</li>
+                        </ul>
                     </div>
 
                     <div class="level-quiz">
@@ -919,30 +1341,68 @@
                     </div>
                 </div>
                 <div class="level-content">
+                    <!-- Time & Difficulty -->
+                    <div class="section-meta">
+                        <div class="time-estimate">⏱️ 5 minutes</div>
+                        <div class="difficulty-badge">⭐ Easy</div>
+                    </div>
+
+                    <p style="color: #666; line-height: 1.8; margin-bottom: 20px;">
+                        The <strong>Explorer</strong> shows you everything in your game organized in a tree structure.
+                        Think of it like a file explorer for your game! Follow these steps to explore it.
+                    </p>
+
+                    <!-- Step-by-Step Checklist -->
+                    <ul class="step-list">
+                        <li class="step-item" data-level="5" data-step="1">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(5, 1, this)">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>Find the Explorer panel</h4>
+                                <p>Look on the right side of Studio. The Explorer shows a tree structure of everything in your game</p>
+                            </div>
+                        </li>
+                        <li class="step-item" data-level="5" data-step="2">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(5, 2, this)">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>Expand the "Workspace" folder</h4>
+                                <p>Click the arrow next to "Workspace" to see all objects in your 3D world</p>
+                            </div>
+                        </li>
+                        <li class="step-item" data-level="5" data-step="3">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(5, 3, this)">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>Click on an object in the Explorer</h4>
+                                <p>Try clicking on "Baseplate" or any other object. Notice it gets selected in the 3D Viewport too!</p>
+                            </div>
+                        </li>
+                        <li class="step-item" data-level="5" data-step="4">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(5, 4, this)">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h4>Explore other services</h4>
+                                <p>Check out "Lighting" for environment settings, and "ReplicatedStorage" for shared resources</p>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <!-- Image Section -->
                     <div class="section-content">
-                        <div class="section-text">
-                            <p>
-                                The <strong>Explorer</strong> shows you everything in your game organized in a tree structure.
-                                Think of it like a file explorer for your game!
-                            </p>
-                            <p>
-                                Every object, service, and part in your game appears here in a hierarchical list. This makes it
-                                easy to:
-                            </p>
-                            <ul>
-                                <li>Find specific objects quickly</li>
-                                <li>Organize your game structure</li>
-                                <li>See parent-child relationships between objects</li>
-                                <li>Access game services like Workspace, Lighting, and more</li>
-                            </ul>
-                            <p>
-                                The Explorer is essential for keeping your game organized as it grows more complex!
-                            </p>
-                        </div>
                         <div class="section-image">
-                            <img src="../roblox_docs_data/images/Explorer.jpg" alt="Roblox Studio Explorer">
-                            <p>The Explorer - navigate your game structure</p>
+                            <img src="../roblox_docs_data/images/Explorer.jpg" alt="Roblox Studio Explorer" onclick="openImageModal(this.src)">
+                            <p>The Explorer - navigate your game structure - Click to zoom in!</p>
                         </div>
+                    </div>
+
+                    <!-- Common Mistakes Alert -->
+                    <div class="alert-box">
+                        <h4>⚠️ Watch Out - Common Mistakes</h4>
+                        <ul>
+                            <li><strong>Can't find the Explorer?</strong> Go to View → Explorer to make it visible</li>
+                            <li><strong>Folders won't expand?</strong> Click directly on the small arrow icon, not the folder name</li>
+                        </ul>
                     </div>
 
                     <div class="level-quiz">
@@ -976,28 +1436,68 @@
                     </div>
                 </div>
                 <div class="level-content">
+                    <!-- Time & Difficulty -->
+                    <div class="section-meta">
+                        <div class="time-estimate">⏱️ 5 minutes</div>
+                        <div class="difficulty-badge">⭐ Easy</div>
+                    </div>
+
+                    <p style="color: #666; line-height: 1.8; margin-bottom: 20px;">
+                        The <strong>Properties</strong> panel is where you customize everything! When you select an object,
+                        all its properties appear here. Follow these steps to explore it.
+                    </p>
+
+                    <!-- Step-by-Step Checklist -->
+                    <ul class="step-list">
+                        <li class="step-item" data-level="6" data-step="1">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(6, 1, this)">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>Find the Properties panel</h4>
+                                <p>Look on the right side of Studio, usually below the Explorer. If you can't see it, go to View → Properties</p>
+                            </div>
+                        </li>
+                        <li class="step-item" data-level="6" data-step="2">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(6, 2, this)">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>Select an object</h4>
+                                <p>Click on the Baseplate (or any part) in the 3D Viewport or Explorer. Watch the Properties panel fill with options!</p>
+                            </div>
+                        </li>
+                        <li class="step-item" data-level="6" data-step="3">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(6, 3, this)">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>Try changing a property</h4>
+                                <p>Find "BrickColor" in the Properties panel. Click the color box and choose a new color. Your object changes instantly!</p>
+                            </div>
+                        </li>
+                        <li class="step-item" data-level="6" data-step="4">
+                            <input type="checkbox" class="step-checkbox" onchange="toggleStep(6, 4, this)">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h4>Explore other properties</h4>
+                                <p>Try changing "Material" (wood, metal, etc.) and "Transparency" (0 = solid, 1 = invisible)</p>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <!-- Image Section -->
                     <div class="section-content">
-                        <div class="section-text">
-                            <p>
-                                The <strong>Properties</strong> panel is where you customize everything! When you select an object,
-                                all its properties appear here.
-                            </p>
-                            <p><strong>What can you customize?</strong></p>
-                            <ul>
-                                <li><strong>Appearance:</strong> Colors, materials, transparency</li>
-                                <li><strong>Size & Position:</strong> Exact coordinates and dimensions</li>
-                                <li><strong>Behavior:</strong> Physics properties, anchoring, collision</li>
-                                <li><strong>Special Features:</strong> Unique properties for each object type</li>
-                            </ul>
-                            <p>
-                                Want to change a part's color? Make something invisible? Adjust gravity? It all happens in the
-                                Properties panel!
-                            </p>
-                        </div>
                         <div class="section-image">
-                            <img src="../roblox_docs_data/images/Properties.jpg" alt="Roblox Studio Properties">
-                            <p>The Properties panel - customize everything</p>
+                            <img src="../roblox_docs_data/images/Properties.jpg" alt="Roblox Studio Properties" onclick="openImageModal(this.src)">
+                            <p>The Properties panel - customize everything - Click to zoom in!</p>
                         </div>
+                    </div>
+
+                    <!-- Common Mistakes Alert -->
+                    <div class="alert-box">
+                        <h4>⚠️ Watch Out - Common Mistakes</h4>
+                        <ul>
+                            <li><strong>Properties panel is empty?</strong> Make sure you have an object selected in the Explorer or 3D Viewport</li>
+                            <li><strong>Can't find a property?</strong> Use the search box at the top of the Properties panel to filter properties</li>
+                        </ul>
                     </div>
 
                     <div class="level-quiz">
@@ -1074,6 +1574,33 @@
                 }
             });
         });
+
+        // Step Tracking
+        let levelProgress = {
+            1: { steps: 0, totalSteps: 4 },
+            2: { steps: 0, totalSteps: 4 },
+            3: { steps: 0, totalSteps: 4 },
+            4: { steps: 0, totalSteps: 4 },
+            5: { steps: 0, totalSteps: 4 },
+            6: { steps: 0, totalSteps: 4 }
+        };
+
+        function toggleStep(level, stepNum, checkbox) {
+            const stepItem = checkbox.closest('.step-item');
+
+            if (checkbox.checked) {
+                stepItem.classList.add('completed');
+                levelProgress[level].steps++;
+            } else {
+                stepItem.classList.remove('completed');
+                levelProgress[level].steps--;
+            }
+
+            // Visual feedback for completion
+            if (levelProgress[level].steps === levelProgress[level].totalSteps) {
+                console.log(`Level ${level} steps completed!`);
+            }
+        }
     </script>
 
     <script>
