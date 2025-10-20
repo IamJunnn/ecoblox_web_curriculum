@@ -1591,6 +1591,9 @@
             if (checkbox.checked) {
                 stepItem.classList.add('completed');
                 levelProgress[level].steps++;
+
+                // TRACK THIS EVENT
+                trackProgress('step_checked', level, { step: stepNum });
             } else {
                 stepItem.classList.remove('completed');
                 levelProgress[level].steps--;
@@ -1649,6 +1652,13 @@
             options[selectedOption].classList.add(isCorrect ? 'correct' : 'incorrect');
             options[correctAnswers[level]].classList.add('correct');
 
+            // TRACK THIS EVENT
+            trackProgress('quiz_answered', level, {
+                correct: isCorrect,
+                answer: selectedOption,
+                attempt: 1
+            });
+
             // Show feedback
             if (isCorrect) {
                 feedback.className = 'quiz-feedback correct';
@@ -1690,6 +1700,12 @@
 
                 const nextStatus = document.getElementById(`status-${level + 1}`);
                 nextStatus.innerHTML = '🔓 Unlocked';
+
+                // TRACK THIS EVENT
+                trackProgress('level_unlocked', level + 1, {
+                    xp_earned: totalXP,
+                    total_xp: totalXP
+                });
 
                 // Scroll to next level
                 setTimeout(() => {
@@ -1752,6 +1768,316 @@
                 completionMsg.scrollIntoView({ behavior: 'smooth' });
             }, 300);
         }
+    </script>
+
+    <!-- Student Login Modal -->
+    <div id="studentLoginModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2>Welcome, Student!</h2>
+            <p>Enter your information to track your progress</p>
+
+            <form id="studentLoginForm">
+                <div class="form-group">
+                    <label>Your Name:</label>
+                    <input type="text" id="studentName" required placeholder="John Doe">
+                </div>
+
+                <div class="form-group">
+                    <label>Class Code (optional):</label>
+                    <input type="text" id="classCode" placeholder="RBLX2025">
+                </div>
+
+                <button type="submit" class="btn-primary">Start Tutorial</button>
+            </form>
+
+            <p class="privacy-note">📊 Your progress will be saved and shared with your teacher</p>
+        </div>
+    </div>
+
+    <style>
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-content h2 {
+            color: #ff6b35;
+            margin-bottom: 10px;
+        }
+
+        .modal-content p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #ff6b35;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+        }
+
+        .privacy-note {
+            margin-top: 20px;
+            font-size: 13px;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+
+    <script>
+        // ===========================
+        // API CONFIGURATION
+        // ===========================
+
+        const API_CONFIG = {
+            baseURL: 'http://localhost:3300/api',  // Backend server URL
+            endpoints: {
+                progress: '/progress',
+                students: '/students',
+                stats: '/stats'
+            }
+        };
+
+        // Student session data
+        let studentSession = {
+            id: null,
+            name: null,
+            classCode: null,
+            startTime: null
+        };
+
+        // Event queue for offline support
+        let offlineQueue = [];
+
+        // ===========================
+        // STUDENT LOGIN
+        // ===========================
+
+        // Check if student already logged in
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedStudent = localStorage.getItem('studentSession');
+
+            if (savedStudent) {
+                studentSession = JSON.parse(savedStudent);
+                console.log('✅ Student session restored:', studentSession.name);
+            } else {
+                // Show login modal
+                document.getElementById('studentLoginModal').style.display = 'flex';
+            }
+        });
+
+        // Handle login form submission
+        document.getElementById('studentLoginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const name = document.getElementById('studentName').value;
+            const classCode = document.getElementById('classCode').value;
+
+            // Send to API to create or get student
+            try {
+                const response = await fetch(`${API_CONFIG.baseURL}${API_CONFIG.endpoints.progress}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        student_name: name,
+                        class_code: classCode,
+                        event_type: 'session_start',
+                        level: 1,
+                        data: { timestamp: new Date().toISOString() }
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    studentSession = {
+                        id: result.student_id,
+                        name: name,
+                        classCode: classCode,
+                        startTime: new Date().toISOString()
+                    };
+
+                    // Save to localStorage
+                    localStorage.setItem('studentSession', JSON.stringify(studentSession));
+
+                    // Hide modal
+                    document.getElementById('studentLoginModal').style.display = 'none';
+
+                    console.log('✅ Student logged in:', studentSession);
+                }
+            } catch (error) {
+                console.error('❌ Login failed:', error);
+                alert('Could not connect to server. Your progress will be saved locally.');
+
+                // Fallback: save locally without student_id
+                studentSession = {
+                    id: `local_${Date.now()}`,
+                    name: name,
+                    classCode: classCode,
+                    startTime: new Date().toISOString()
+                };
+
+                localStorage.setItem('studentSession', JSON.stringify(studentSession));
+                document.getElementById('studentLoginModal').style.display = 'none';
+            }
+        });
+
+        // ===========================
+        // PROGRESS TRACKING
+        // ===========================
+
+        // Send progress event to API
+        async function trackProgress(eventType, level, data = {}) {
+            if (!studentSession.id) {
+                console.warn('⚠️ No student session');
+                return;
+            }
+
+            const event = {
+                student_id: studentSession.id,
+                event_type: eventType,
+                level: level,
+                data: data
+            };
+
+            try {
+                const response = await fetch(`${API_CONFIG.baseURL}${API_CONFIG.endpoints.progress}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(event)
+                });
+
+                if (response.ok) {
+                    console.log(`✅ Tracked: ${eventType} - Level ${level}`);
+
+                    // Also save to localStorage backup
+                    saveToLocalBackup(event);
+                } else {
+                    throw new Error('API request failed');
+                }
+            } catch (error) {
+                console.error('❌ Failed to track progress:', error);
+
+                // Queue for retry
+                offlineQueue.push(event);
+                localStorage.setItem('offlineQueue', JSON.stringify(offlineQueue));
+
+                // Save to local backup
+                saveToLocalBackup(event);
+            }
+        }
+
+        // Save event to local backup
+        function saveToLocalBackup(event) {
+            const backup = JSON.parse(localStorage.getItem('progressBackup') || '[]');
+            backup.push({
+                ...event,
+                timestamp: new Date().toISOString()
+            });
+            localStorage.setItem('progressBackup', JSON.stringify(backup));
+        }
+
+        // Retry offline events
+        async function retryOfflineQueue() {
+            if (offlineQueue.length === 0) return;
+
+            console.log(`🔄 Retrying ${offlineQueue.length} offline events...`);
+
+            const failed = [];
+
+            for (const event of offlineQueue) {
+                try {
+                    const response = await fetch(`${API_CONFIG.baseURL}${API_CONFIG.endpoints.progress}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(event)
+                    });
+
+                    if (!response.ok) throw new Error('Failed');
+
+                    console.log('✅ Synced offline event');
+                } catch (error) {
+                    failed.push(event);
+                }
+            }
+
+            offlineQueue = failed;
+            localStorage.setItem('offlineQueue', JSON.stringify(offlineQueue));
+        }
+
+        // Retry every 30 seconds
+        setInterval(retryOfflineQueue, 30000);
+
+        // Track session end
+        window.addEventListener('beforeunload', () => {
+            if (studentSession.id) {
+                const duration = new Date() - new Date(studentSession.startTime);
+
+                // Send final progress update
+                navigator.sendBeacon(
+                    `${API_CONFIG.baseURL}${API_CONFIG.endpoints.progress}`,
+                    JSON.stringify({
+                        student_id: studentSession.id,
+                        event_type: 'session_end',
+                        level: completedLevels + 1,
+                        data: { duration_seconds: Math.floor(duration / 1000) }
+                    })
+                );
+            }
+        });
     </script>
 </body>
 </html>
