@@ -324,9 +324,10 @@ body {
   background: linear-gradient(135deg, #f8f9fa, #e9ecef);
   border-radius: 10px;
   flex: 1;
-  min-width: 100px;
+  min-width: 160px;
   text-align: center;
   justify-content: center;
+  white-space: nowrap;
 }
 
 .badge-icon {
