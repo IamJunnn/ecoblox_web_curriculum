@@ -95,10 +95,23 @@ function displayStudentSummary(data) {
     `${student.email || 'No email'} | Class: ${student.class_code || 'None'} | Last Active: ${formatRelativeTime(student.last_active)}`;
 
   // Update summary cards
-  document.getElementById('detailProgress').textContent = `${summary.progress_percentage || 0}%`;
-  document.getElementById('detailLevel').textContent = summary.current_level || 0;
-  document.getElementById('detailXP').textContent = summary.total_xp || 0;
-  document.getElementById('detailSteps').textContent = summary.steps_completed || 0;
+  const progressPercent = summary.progress_percentage || 0;
+  const totalXP = summary.total_xp || 0;
+
+  // Progress card with bar
+  document.getElementById('detailProgressPercent').textContent = `${progressPercent}%`;
+  document.getElementById('detailProgressBar').style.width = `${progressPercent}%`;
+
+  // Total XP
+  document.getElementById('detailXP').textContent = totalXP;
+
+  // Badges (1 badge per 100 XP, max 12)
+  const badgesEarned = Math.min(Math.floor(totalXP / 100), 12);
+  document.getElementById('detailBadges').textContent = `${badgesEarned}/12`;
+
+  // Rank based on XP
+  const rank = calculateRank(totalXP);
+  document.getElementById('detailRank').textContent = rank;
 }
 
 // ===========================

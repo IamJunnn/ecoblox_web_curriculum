@@ -34,36 +34,42 @@
   <div class="container mt-4">
 
     <!-- Summary Cards -->
-    <div class="row mb-4">
+    <div class="row mb-4 align-items-center">
+      <!-- Progress Bar Card -->
       <div class="col-md-3">
         <div class="stat-card">
-          <div class="stat-icon">📈</div>
-          <div class="stat-value" id="detailProgress">-</div>
-          <div class="stat-label">Overall Progress</div>
+          <div class="stat-value" id="detailProgressPercent" style="font-size: 2rem; font-weight: bold;">0%</div>
+          <div class="stat-label">Complete</div>
+          <div class="progress mt-2" style="height: 8px;">
+            <div class="progress-bar bg-success" id="detailProgressBar" role="progressbar" style="width: 0%"></div>
+          </div>
         </div>
       </div>
 
-      <div class="col-md-3">
-        <div class="stat-card">
-          <div class="stat-icon">🎮</div>
-          <div class="stat-value" id="detailLevel">-</div>
-          <div class="stat-label">Current Level</div>
-        </div>
-      </div>
-
+      <!-- Total XP Card -->
       <div class="col-md-3">
         <div class="stat-card">
           <div class="stat-icon">⭐</div>
-          <div class="stat-value" id="detailXP">-</div>
-          <div class="stat-label">Total XP</div>
+          <div class="stat-value" id="detailXP">0</div>
+          <div class="stat-label">TOTAL XP</div>
         </div>
       </div>
 
+      <!-- Badges Card -->
       <div class="col-md-3">
         <div class="stat-card">
-          <div class="stat-icon">✓</div>
-          <div class="stat-value" id="detailSteps">-</div>
-          <div class="stat-label">Steps Completed</div>
+          <div class="stat-icon">🏆</div>
+          <div class="stat-value" id="detailBadges">0/12</div>
+          <div class="stat-label">BADGES</div>
+        </div>
+      </div>
+
+      <!-- Rank Card -->
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-icon">📈</div>
+          <div class="stat-value" id="detailRank">Beginner</div>
+          <div class="stat-label">RANK</div>
         </div>
       </div>
     </div>
