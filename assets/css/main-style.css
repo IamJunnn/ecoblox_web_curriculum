@@ -320,11 +320,9 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 1rem;
+  padding: 1rem 1.5rem;
   background: linear-gradient(135deg, #f8f9fa, #e9ecef);
   border-radius: 10px;
-  flex: 1;
-  min-width: 160px;
   text-align: center;
   justify-content: center;
   white-space: nowrap;
