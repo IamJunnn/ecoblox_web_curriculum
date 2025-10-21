@@ -38,44 +38,45 @@
     <!-- Student Progress Summary -->
     <div class="card summary-card mb-4">
       <div class="card-body">
-        <div class="row align-items-center">
-          <div class="col-md-8">
-            <h5 class="mb-3">👋 Your Dashboard</h5>
-            <div class="overall-progress">
-              <div class="d-flex justify-content-between mb-2">
-                <span>Overall Progress</span>
-                <span><strong id="overallProgressText">0%</strong> Complete</span>
-              </div>
-              <div class="progress" style="height: 30px;">
-                <div class="progress-bar" id="overallProgressBar" role="progressbar" style="width: 0%">
-                  0%
-                </div>
+        <h5 class="mb-4">👋 Your Dashboard</h5>
+
+        <!-- Summary Stats Row -->
+        <div class="row mb-3 align-items-center">
+          <!-- Progress Bar Card -->
+          <div class="col-md-3">
+            <div class="stat-card">
+              <div class="stat-value" id="overallProgressText" style="font-size: 2rem; font-weight: bold;">0%</div>
+              <div class="stat-label">Complete</div>
+              <div class="progress mt-2" style="height: 8px;">
+                <div class="progress-bar bg-success" id="overallProgressBar" role="progressbar" style="width: 0%"></div>
               </div>
             </div>
           </div>
-          <div class="col-md-4">
-            <div class="student-stats">
-              <div class="stat-badge">
-                <span class="badge-icon">⭐</span>
-                <div>
-                  <div class="badge-value" id="totalXPBadge">0</div>
-                  <div class="badge-label">Total XP</div>
-                </div>
-              </div>
-              <div class="stat-badge">
-                <span class="badge-icon">🏆</span>
-                <div>
-                  <div class="badge-value" id="badgesEarned">0/12</div>
-                  <div class="badge-label">Badges</div>
-                </div>
-              </div>
-              <div class="stat-badge">
-                <span class="badge-icon">📈</span>
-                <div>
-                  <div class="badge-value" id="currentRank">Beginner</div>
-                  <div class="badge-label">Rank</div>
-                </div>
-              </div>
+
+          <!-- Total XP Card -->
+          <div class="col-md-3">
+            <div class="stat-card">
+              <div class="stat-icon">⭐</div>
+              <div class="stat-value" id="totalXPBadge">0</div>
+              <div class="stat-label">TOTAL XP</div>
+            </div>
+          </div>
+
+          <!-- Badges Card -->
+          <div class="col-md-3">
+            <div class="stat-card">
+              <div class="stat-icon">🏆</div>
+              <div class="stat-value" id="badgesEarned">0/12</div>
+              <div class="stat-label">BADGES</div>
+            </div>
+          </div>
+
+          <!-- Rank Card -->
+          <div class="col-md-3">
+            <div class="stat-card">
+              <div class="stat-icon">📈</div>
+              <div class="stat-value" id="currentRank">Beginner</div>
+              <div class="stat-label">RANK</div>
             </div>
           </div>
         </div>
