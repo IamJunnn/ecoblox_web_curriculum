@@ -346,9 +346,9 @@ function startCourse(courseUrl, courseId) {
 }
 
 function viewCourseProgress(courseId) {
-  // For Course 1, redirect to admin student detail page
+  // Redirect to student-specific progress page (secure, no URL parameters)
   if (courseId === 1 && currentStudent) {
-    window.location.href = `admin/student-detail.html?id=${currentStudent.id}`;
+    window.location.href = 'student-progress.html';
   }
 }
 
