@@ -913,7 +913,7 @@
     <div class="container">
         <header>
             <div class="header-content">
-                <h1>🌟 Roblox Studio Quest</h1>
+                <h1>🌟 Roblox Studio Learning</h1>
                 <p>Level Up Your Skills - Unlock New Areas!</p>
             </div>
             <a href="../dashboard.html" class="back-button">← Dashboard</a>
@@ -1775,7 +1775,7 @@
 
             // Update level text
             const levelNum = Math.floor(totalXP / xpPerQuestion) + 1;
-            document.getElementById('xp-text').textContent = `Level ${Math.min(levelNum, totalLevels + 1)}`;
+            document.getElementById('xp-text').textContent = `Level ${Math.min(levelNum, totalLevels)}`;
         }
 
         function showCompletion() {
@@ -1948,6 +1948,9 @@
 
                 // Update last active
                 updateLastActive();
+
+                // Load saved progress from database
+                loadSavedProgress();
             } else {
                 // Fallback: check old local session
                 const savedStudent = localStorage.getItem('studentSession');
@@ -2001,6 +2004,9 @@
                     document.getElementById('studentLoginModal').style.display = 'none';
 
                     console.log('✅ Student logged in:', studentSession);
+
+                    // Load saved progress from database
+                    loadSavedProgress();
                 }
             } catch (error) {
                 console.error('❌ Login failed:', error);
@@ -2100,6 +2106,135 @@
 
             offlineQueue = failed;
             localStorage.setItem('offlineQueue', JSON.stringify(offlineQueue));
+        }
+
+        // ===========================
+        // LOAD SAVED PROGRESS
+        // ===========================
+
+        // Load student's saved progress from database
+        async function loadSavedProgress() {
+            if (!studentSession.id || studentSession.id.toString().startsWith('local_')) {
+                console.warn('⚠️ No valid student ID for loading progress');
+                return;
+            }
+
+            try {
+                console.log(`🔄 Loading progress for student ${studentSession.id}...`);
+
+                const response = await fetch(`${API_CONFIG.baseURL}/students/${studentSession.id}`);
+
+                if (!response.ok) {
+                    throw new Error('Failed to load progress');
+                }
+
+                const data = await response.json();
+                console.log('✅ Progress data loaded:', data);
+
+                // Restore progress to UI
+                restoreProgressToUI(data);
+
+            } catch (error) {
+                console.error('❌ Failed to load progress:', error);
+                // Continue with empty progress
+            }
+        }
+
+        // Restore progress data to UI
+        function restoreProgressToUI(data) {
+            if (!data || !data.progress_by_level) {
+                console.log('📝 No previous progress to restore');
+                return;
+            }
+
+            const progressByLevel = data.progress_by_level;
+            const summary = data.summary || {};
+
+            console.log('🔧 Restoring progress to UI...');
+
+            // Restore XP and update all displays
+            if (summary.total_xp) {
+                totalXP = summary.total_xp;
+                updateXP();  // Updates XP display, bar, level, and rank
+            }
+
+            // Restore completed levels count
+            if (summary.levels_unlocked) {
+                completedLevels = summary.levels_unlocked;
+            }
+
+            // Restore checkboxes for each level
+            Object.keys(progressByLevel).forEach(levelNum => {
+                const level = parseInt(levelNum);
+                const levelData = progressByLevel[levelNum];
+
+                // Restore step checkboxes
+                if (levelData.steps && Array.isArray(levelData.steps)) {
+                    levelData.steps.forEach(stepData => {
+                        const stepNum = stepData.step || stepData;
+                        const checkbox = document.querySelector(
+                            `input[onchange*="toggleStep(${level}, ${stepNum}"]`
+                        );
+
+                        if (checkbox && !checkbox.checked) {
+                            checkbox.checked = true;
+                            checkbox.closest('.step-item').classList.add('completed');
+                            if (levelProgress[level]) {
+                                levelProgress[level].steps++;
+                            }
+                            console.log(`✓ Restored: Level ${level}, Step ${stepNum}`);
+                        }
+                    });
+                }
+
+                // Restore quiz answer if answered
+                if (levelData.quiz_attempts && levelData.quiz_attempts.length > 0) {
+                    const lastAttempt = levelData.quiz_attempts[levelData.quiz_attempts.length - 1];
+
+                    if (lastAttempt.correct) {
+                        // Mark quiz as completed
+                        const quizContainer = document.getElementById(`quiz-${level}`);
+                        const feedback = document.getElementById(`feedback-${level}`);
+                        const unlockBtn = document.getElementById(`unlock-${level}`);
+
+                        if (quizContainer && feedback) {
+                            // Disable quiz options
+                            const options = quizContainer.querySelectorAll('.option');
+                            options.forEach(opt => opt.classList.add('disabled'));
+
+                            // Show correct answer
+                            const correctAnswer = correctAnswers[level];
+                            if (options[correctAnswer]) {
+                                options[correctAnswer].classList.add('correct');
+                            }
+
+                            // Show feedback
+                            feedback.className = 'quiz-feedback correct';
+                            feedback.innerHTML = `<strong>✓ Completed! +${xpPerQuestion} XP</strong><br>${explanations[level]}`;
+                            feedback.style.display = 'block';
+
+                            // Enable unlock button
+                            if (unlockBtn) {
+                                unlockBtn.disabled = false;
+                                unlockBtn.classList.add('unlocked');
+                            }
+
+                            console.log(`✓ Restored: Level ${level} quiz (correct)`);
+                        }
+                    }
+                }
+
+                // Unlock next level if this level was completed
+                if (levelData.status === 'completed' && level < totalLevels) {
+                    const nextCard = document.getElementById(`level-${level + 1}`);
+                    if (nextCard) {
+                        nextCard.classList.remove('locked');
+                        console.log(`🔓 Unlocked: Level ${level + 1}`);
+                    }
+                }
+            });
+
+            console.log('✅ Progress restored successfully!');
         }
 
         // Retry every 30 seconds

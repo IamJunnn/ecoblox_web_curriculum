@@ -1,0 +1,28 @@
+# Preview and temporary files (local only)
+layout-preview.html
+
+# Node modules
+node_modules/
+
+# Database files
+*.db
+*.db-journal
+
+# Environment variables
+.env
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
