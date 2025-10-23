@@ -216,6 +216,7 @@ router.get('/students', (req, res) => {
             class_code: student.class_code,
             created_at: student.created_at,
             last_active: student.last_active,
+            role: student.role,
             ...stats
           });
         });

@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Install Roblox Studio - Tutorial</title>
+    <script src="assets/js/auth.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+            color: white;
+            padding: 30px 40px;
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header .header-content {
+            flex: 1;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        header p {
+            font-size: 1.2em;
+            opacity: 0.95;
+        }
+
+        .back-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid white;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .back-button:hover {
+            background: white;
+            color: #ff6b35;
+            transform: translateY(-2px);
+        }
+
+        /* XP and Stats Bar */
+        .stats-bar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            color: white;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stat-label {
+            font-weight: bold;
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .stat-value {
+            background: white;
+            color: #667eea;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .stat-icon {
+            font-size: 1.3em;
+        }
+
+        .rank-badge {
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            color: #333;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1em;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Content */
+        .content {
+            padding: 40px;
+        }
+
+        .intro {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            border-left: 5px solid #ff6b35;
+        }
+
+        .intro h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+
+        .intro p {
+            color: #555;
+            line-height: 1.8;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+        }
+
+        /* Section Cards */
+        .section-card {
+            margin-bottom: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .section-content {
+            background: white;
+            padding: 30px;
+        }
+
+        /* Requirements Grid */
+        .requirements-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .requirement-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #667eea;
+        }
+
+        .requirement-card h4 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .requirement-card ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .requirement-card li {
+            color: #555;
+            padding: 8px 0;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .requirement-card li:last-child {
+            border-bottom: none;
+        }
+
+        .requirement-label {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .requirement-value {
+            color: #333;
+        }
+
+        /* Step List */
+        .step-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 20px;
+        }
+
+        .step-item {
+            background: #f8f9fa;
+            padding: 20px 25px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            border-left: 5px solid #ff6b35;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .step-item:hover {
+            background: #e9ecef;
+            transform: translateX(3px);
+        }
+
+        .step-item.completed {
+            background: #d4edda;
+            border-left-color: #28a745;
+            opacity: 0.85;
+        }
+
+        .step-checkbox {
+            width: 24px;
+            height: 24px;
+            min-width: 24px;
+            cursor: pointer;
+            margin-top: 5px;
+            accent-color: #28a745;
+        }
+
+        .step-number {
+            background: #ff6b35;
+            color: white;
+            width: 35px;
+            height: 35px;
+            min-width: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-content h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .step-content p {
+            color: #666;
+            line-height: 1.8;
+            font-size: 1.05em;
+            margin-bottom: 10px;
+        }
+
+        .step-content ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+
+        .step-content li {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 5px;
+        }
+
+        .step-code {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            display: inline-block;
+            margin: 5px 0;
+        }
+
+        /* Download Button */
+        .download-button {
+            display: inline-flex;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.1em;
+            margin: 15px 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .download-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+            color: white;
+        }
+
+        .download-button img {
+            margin-right: 12px;
+            width: 26px;
+            height: 26px;
+        }
+
+        /* Next Steps Section */
+        .next-steps {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            padding: 30px;
+            border-radius: 15px;
+            color: white;
+            margin-top: 30px;
+        }
+
+        .next-steps h2 {
+            font-size: 1.8em;
+            margin-bottom: 15px;
+        }
+
+        .next-steps p {
+            font-size: 1.1em;
+            line-height: 1.8;
+        }
+
+        /* Source Citation */
+        .source {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            font-size: 0.95em;
+            background: #f8f9fa;
+            border-top: 3px solid #ff6b35;
+        }
+
+        .source a {
+            color: #ff6b35;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .source a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            header h1 {
+                font-size: 1.8em;
+            }
+
+            header p {
+                font-size: 1em;
+            }
+
+            .back-button {
+                align-self: flex-start;
+            }
+
+            .stats-bar {
+                padding: 15px 20px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .stat-item {
+                width: 100%;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .requirements-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .intro h2 {
+                font-size: 1.5em;
+            }
+
+            .intro p {
+                font-size: 1em;
+            }
+
+            .section-header {
+                font-size: 1.2em;
+                padding: 15px 20px;
+            }
+
+            .section-content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Header -->
+    <header>
+        <div class="header-content">
+            <h1>📦 Install Roblox Studio</h1>
+            <p>Get Started with Roblox Studio - Your First Step!</p>
+        </div>
+        <a href="student/dashboard.html" class="back-button">← Dashboard</a>
+    </header>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+        <div class="stat-item">
+            <span class="stat-icon">🎯</span>
+            <span class="stat-label">Quest:</span>
+            <span class="stat-value">Install Studio</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-icon">⏱️</span>
+            <span class="stat-label">Time:</span>
+            <span class="stat-value">~5 mins</span>
+        </div>
+        <div class="stat-item">
+            <span class="rank-badge">🏁 Beginner Quest</span>
+        </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+
+        <!-- Introduction -->
+        <div class="intro">
+            <h2>🚀 Your Journey Begins Here!</h2>
+            <p>
+                Welcome to your first quest! <strong>Roblox Studio</strong> is a powerful 3D creation tool that lets you build and publish amazing experiences for millions of Roblox players worldwide.
+            </p>
+            <p>
+                In this tutorial, you'll learn how to download and install Roblox Studio on your computer. Follow each step carefully, and you'll be ready to start creating in just a few minutes! Let's begin your adventure! 🎮
+            </p>
+        </div>
+
+        <!-- System Requirements -->
+        <div class="section-card">
+            <div class="section-header">
+                💻 System Requirements
+            </div>
+            <div class="section-content">
+                <div class="requirements-grid">
+                    <!-- Minimum Requirements -->
+                    <div class="requirement-card">
+                        <h4>⚙️ Minimum Requirements</h4>
+                        <ul>
+                            <li>
+                                <span class="requirement-label">OS Version:</span>
+                                <span class="requirement-value">Windows 10 / macOS 10.14</span>
+                            </li>
+                            <li>
+                                <span class="requirement-label">Memory (RAM):</span>
+                                <span class="requirement-value">3 GB</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Recommended Requirements -->
+                    <div class="requirement-card">
+                        <h4>⭐ Recommended Requirements</h4>
+                        <ul>
+                            <li>
+                                <span class="requirement-label">OS Version:</span>
+                                <span class="requirement-value">Windows 11 / macOS 14+</span>
+                            </li>
+                            <li>
+                                <span class="requirement-label">Memory (RAM):</span>
+                                <span class="requirement-value">8 GB</span>
+                            </li>
+                            <li>
+                                <span class="requirement-label">Resolution:</span>
+                                <span class="requirement-value">1600×900 or higher</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Installation Steps -->
+        <div class="section-card">
+            <div class="section-header">
+                🚀 Installation Steps
+            </div>
+            <div class="section-content">
+                <p style="color: #555; font-size: 1.1em; margin-bottom: 20px;">
+                    Follow these steps to install Roblox Studio on your computer:
+                </p>
+
+                <ul class="step-list">
+                    <!-- Step 1 -->
+                    <li class="step-item" id="step-1">
+                        <input type="checkbox" class="step-checkbox" id="checkbox-1" onclick="toggleStep(1)">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h3>Download Studio</h3>
+                            <p>
+                                Click the <strong>Download Studio</strong> button below to download Roblox Studio from the official Roblox Creator Hub website.
+                            </p>
+                            <a href="https://create.roblox.com/landing" target="_blank" class="download-button">
+                                <img alt="Roblox Studio Logo" src="https://cdn.foundation.roblox.com/current/StudioLogo-Dark.svg">
+                                Download Studio
+                            </a>
+                        </div>
+                    </li>
+
+                    <!-- Step 2 -->
+                    <li class="step-item" id="step-2">
+                        <input type="checkbox" class="step-checkbox" id="checkbox-2" onclick="toggleStep(2)">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h3>Confirm Download</h3>
+                            <p>
+                                In the pop-up dialog, click the <strong>Download Studio</strong> button to confirm the download.
+                            </p>
+                        </div>
+                    </li>
+
+                    <!-- Step 3 -->
+                    <li class="step-item" id="step-3">
+                        <input type="checkbox" class="step-checkbox" id="checkbox-3" onclick="toggleStep(3)">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h3>Locate the Installer</h3>
+                            <p>
+                                Find the Studio installer in your browser's download history and double-click the file.
+                            </p>
+                            <ul>
+                                <li>
+                                    <strong>On Windows:</strong> The file is called <span class="step-code">RobloxStudio.exe</span>
+                                </li>
+                                <li>
+                                    <strong>On Mac:</strong> The file is called <span class="step-code">RobloxStudio.dmg</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </li>
+
+                    <!-- Step 4 -->
+                    <li class="step-item" id="step-4">
+                        <input type="checkbox" class="step-checkbox" id="checkbox-4" onclick="toggleStep(4)">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <h3>Launch Studio</h3>
+                            <p>
+                                After Studio finishes installing, a pop-up confirmation displays. Click the <strong>Launch Studio</strong> button.
+                            </p>
+                        </div>
+                    </li>
+
+                    <!-- Step 5 -->
+                    <li class="step-item" id="step-5">
+                        <input type="checkbox" class="step-checkbox" id="checkbox-5" onclick="toggleStep(5)">
+                        <div class="step-number">5</div>
+                        <div class="step-content">
+                            <h3>Log In</h3>
+                            <p>
+                                After Studio opens, log in with your Roblox account.
+                            </p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Next Steps -->
+        <div class="next-steps">
+            <h2>🎉 Quest Complete!</h2>
+            <p>
+                <strong>Congratulations!</strong> You've successfully installed Roblox Studio on your computer. You're now ready to begin your journey as a Roblox creator!
+            </p>
+            <p style="margin-top: 15px;">
+                <strong>🎯 Next Quest:</strong> Head back to your dashboard to explore the Roblox Studio interface and start building your first experience!
+            </p>
+            <div style="text-align: center; margin-top: 25px;">
+                <a href="student/dashboard.html" class="download-button" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+                    ← Return to Dashboard
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Source Citation -->
+    <div class="source">
+        <p>
+            <strong>Source:</strong>
+            <a href="https://create.roblox.com/docs/tutorials/curriculums/studio/install-studio" target="_blank">
+                Roblox Creator Documentation
+            </a>
+        </p>
+    </div>
+
+</div>
+
+<script>
+    // Update last active timestamp if logged in
+    if (window.updateLastActive) {
+        window.updateLastActive();
+    }
+
+    // Add smooth scroll behavior
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth'
+                });
+            }
+        });
+    });
+
+    // ===========================
+    // CHECKBOX PROGRESS TRACKING
+    // ===========================
+
+    const STORAGE_KEY = 'installStudioProgress';
+
+    // Load saved progress on page load
+    window.addEventListener('DOMContentLoaded', () => {
+        loadProgress();
+    });
+
+    // Toggle step completion
+    function toggleStep(stepNumber) {
+        const checkbox = document.getElementById(`checkbox-${stepNumber}`);
+        const stepItem = document.getElementById(`step-${stepNumber}`);
+
+        if (checkbox.checked) {
+            stepItem.classList.add('completed');
+        } else {
+            stepItem.classList.remove('completed');
+        }
+
+        // Save progress
+        saveProgress();
+    }
+
+    // Save progress to localStorage
+    function saveProgress() {
+        const progress = {};
+        for (let i = 1; i <= 5; i++) {
+            const checkbox = document.getElementById(`checkbox-${i}`);
+            if (checkbox) {
+                progress[`step-${i}`] = checkbox.checked;
+            }
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+    }
+
+    // Load progress from localStorage
+    function loadProgress() {
+        const savedProgress = localStorage.getItem(STORAGE_KEY);
+        if (!savedProgress) return;
+
+        try {
+            const progress = JSON.parse(savedProgress);
+
+            for (let i = 1; i <= 5; i++) {
+                const stepKey = `step-${i}`;
+                if (progress[stepKey]) {
+                    const checkbox = document.getElementById(`checkbox-${i}`);
+                    const stepItem = document.getElementById(`step-${i}`);
+
+                    if (checkbox && stepItem) {
+                        checkbox.checked = true;
+                        stepItem.classList.add('completed');
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error loading progress:', error);
+        }
+    }
+</script>
+
+</body>
+</html>

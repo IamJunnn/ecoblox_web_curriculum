@@ -25,7 +25,8 @@ async function loadStudents() {
     }
 
     const data = await response.json();
-    allStudents = data.students;
+    // Filter to show ONLY students (exclude teachers and admins)
+    allStudents = data.students.filter(user => user.role === 'student');
 
     renderStudentsTable(allStudents);
     populateClassFilters(allStudents);
@@ -52,10 +53,8 @@ function renderStudentsTable(students) {
   }
 
   tbody.innerHTML = students.map(student => {
-    // Only show PIN for students (not teachers/admins)
-    const pinDisplay = student.role === 'student'
-      ? `<span class="badge bg-success" style="font-size: 1.1em; font-family: monospace;">${student.pin_code || 'N/A'}</span>`
-      : '<span class="text-muted">-</span>';
+    // All entries are students after filtering, so always show PIN
+    const pinDisplay = `<span class="badge bg-success" style="font-size: 1.1em; font-family: monospace;">${student.pin_code || 'N/A'}</span>`;
 
     return `
       <tr>

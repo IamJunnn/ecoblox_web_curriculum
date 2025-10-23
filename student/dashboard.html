@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Dashboard - Roblox Studio Academy</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Shared CSS Variables -->
+  <link rel="stylesheet" href="../shared/css/variables.css">
+
+  <!-- Main styles -->
+  <link rel="stylesheet" href="../assets/css/main-style.css">
+
+  <!-- Student-specific styles -->
+  <link rel="stylesheet" href="css/student.css">
+</head>
+<body class="dashboard-page">
+
+  <!-- Header -->
+  <header class="dashboard-header">
+    <div class="container">
+      <div class="row align-items-center">
+        <div class="col-md-6">
+          <h1 class="mb-0">🎯 ROBLOX STUDIO ACADEMY</h1>
+        </div>
+        <div class="col-md-6 text-md-end">
+          <div class="user-info">
+            <span class="welcome-text">Welcome, <strong id="studentNameHeader">Student</strong>!</span>
+            <span class="user-level" id="userLevel">Level 0</span>
+            <span class="user-xp" id="userXP">0 XP</span>
+            <button id="logoutBtn" class="btn btn-sm btn-outline-light ms-2">🚪 Logout</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <div class="container mt-4">
+
+    <!-- Student Progress Summary -->
+    <div class="card summary-card mb-4">
+      <div class="card-body">
+        <!-- Top Row: Heading left, Stats right -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h5 class="mb-0">👋 Your Dashboard</h5>
+
+          <div class="d-flex gap-3">
+            <div class="stat-badge">
+              <span class="badge-icon">💎</span>
+              <div>
+                <div class="badge-value" id="totalXPBadge">0</div>
+                <div class="badge-label">Total XP</div>
+              </div>
+            </div>
+            <div class="stat-badge">
+              <span class="badge-icon">🥇</span>
+              <div>
+                <div class="badge-value" id="badgesEarned">0/12</div>
+                <div class="badge-label">Badges</div>
+              </div>
+            </div>
+            <div class="stat-badge">
+              <span class="badge-icon">👑</span>
+              <div>
+                <div class="badge-value" id="currentRank">Beginner</div>
+                <div class="badge-label">Rank</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="overall-progress">
+          <div class="d-flex justify-content-between mb-2">
+            <span>Overall Progress</span>
+            <span><strong id="overallProgressText">0%</strong> Complete</span>
+          </div>
+          <div class="progress" style="height: 30px;">
+            <div class="progress-bar" id="overallProgressBar" role="progressbar" style="width: 0%">
+              0%
+            </div>
+          </div>
+        </div>
+
+        <!-- Class Info -->
+        <div class="class-info mt-3">
+          <small class="text-muted">
+            🏫 Class: <strong id="classCodeDisplay">-</strong> |
+            📧 <span id="emailDisplay">-</span> |
+            🕒 Last Active: <span id="lastActiveDisplay">-</span>
+          </small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Available Courses -->
+    <div class="courses-section">
+      <h4 class="mb-4">📚 Available Courses</h4>
+
+      <div id="coursesContainer">
+        <!-- Courses will be loaded dynamically -->
+        <div class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="mt-2">Loading courses...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions mt-5">
+      <h5 class="mb-3">🎯 Quick Actions</h5>
+      <div class="action-buttons">
+        <button class="btn btn-outline-primary" onclick="viewAllBadges()">
+          📝 View All Badges
+        </button>
+        <button class="btn btn-outline-primary" onclick="viewLeaderboard()">
+          🏆 Class Leaderboard
+        </button>
+        <button class="btn btn-outline-primary" onclick="viewMyClass()">
+          👥 My Class
+        </button>
+        <button class="btn btn-outline-primary" onclick="getHelp()">
+          ❓ Get Help
+        </button>
+        <button class="btn btn-outline-primary" onclick="openSettings()">
+          ⚙️ Settings
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <footer class="dashboard-footer mt-5">
+    <div class="container">
+      <p class="text-center text-muted mb-0">
+        &copy; 2025 Roblox Studio Academy
+      </p>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Student dashboard script (ES6 module) -->
+  <script type="module" src="js/dashboard.js"></script>
+
+</body>
+</html>

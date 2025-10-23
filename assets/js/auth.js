@@ -161,7 +161,7 @@ async function handleStudentLogin(e) {
     const session = saveSession(result.student);
 
     // Redirect to student dashboard
-    window.location.href = 'dashboard.html';
+    redirectToRoleDashboard('student');
 
   } catch (error) {
     console.error('Login error:', error);
@@ -235,11 +235,11 @@ function redirectToRoleDashboard(role) {
       window.location.href = 'admin/index.html';
       break;
     case 'teacher':
-      window.location.href = 'admin/index.html'; // Teachers use admin dashboard for now
+      window.location.href = 'teacher/index.html';
       break;
     case 'student':
     default:
-      window.location.href = 'dashboard.html';
+      window.location.href = 'student/dashboard.html';
       break;
   }
 }
