@@ -145,7 +145,7 @@ router.post('/auth/student-login', (req, res) => {
 // ==========================
 // Save student progress event
 router.post('/progress', (req, res) => {
-  const { student_id, student_name, student_email, class_code, event_type, level, data } = req.body;
+  const { student_id, student_name, student_email, class_code, event_type, level, course_id, data } = req.body;
 
   // Validation
   if (!event_type) {
@@ -161,17 +161,17 @@ router.post('/progress', (req, res) => {
       }
 
       // Now add the progress event
-      saveProgressEvent(newStudentId, event_type, level, data, res);
+      saveProgressEvent(newStudentId, event_type, level, course_id, data, res);
     });
   } else {
     // Use existing student_id
-    saveProgressEvent(student_id, event_type, level, data, res);
+    saveProgressEvent(student_id, event_type, level, course_id, data, res);
   }
 });
 
 // Helper function to save progress
-function saveProgressEvent(studentId, eventType, level, data, res) {
-  addProgressEvent(studentId, eventType, level, data, (err) => {
+function saveProgressEvent(studentId, eventType, level, courseId, data, res) {
+  addProgressEvent(studentId, eventType, level, courseId, data, (err) => {
     if (err) {
       return res.status(500).json({ error: 'Failed to save progress' });
     }
@@ -321,11 +321,18 @@ function calculateStudentStats(events) {
     return data.correct === true;
   }).length;
 
-  // Calculate XP (100 per correct quiz)
-  const totalXP = correctQuizzes * 100;
+  // Calculate XP (100 per correct quiz + 20 per step)
+  const quizXP = correctQuizzes * 100;
+  const stepXP = stepsCompleted * 20;
+  const totalXP = quizXP + stepXP;
 
-  // Calculate progress percentage (6 levels total)
-  const progressPercentage = Math.round((currentLevel / 6) * 100);
+  // NOTE: Overall progress percentage should be calculated in frontend
+  // by averaging all course completion percentages.
+  // Backend returns 0 for backward compatibility, but frontend should override this.
+  let progressPercentage = 0;
+
+  // Calculate badges and rank (NEW: Course-based progression)
+  const badgeRankData = calculateBadgesAndRank(events);
 
   return {
     current_level: currentLevel,
@@ -333,8 +340,112 @@ function calculateStudentStats(events) {
     total_xp: totalXP,
     quiz_score: `${correctQuizzes}/${quizEvents.length}`,
     steps_completed: stepsCompleted,
-    levels_unlocked: levelsUnlocked.size
+    levels_unlocked: levelsUnlocked.size,
+    // NEW: Badge and rank fields
+    badges: badgeRankData.badges,
+    rank: badgeRankData.rank,
+    rankName: badgeRankData.rankName,
+    rankIcon: badgeRankData.rankIcon,
+    coursesCompleted: badgeRankData.coursesCompleted
   };
+}
+
+// ==========================
+// BADGE & RANK CALCULATION (v2.0)
+// ==========================
+// Course-based progression: 1 course = 1 badge = 1 rank level
+
+/**
+ * Calculate badges and rank based on completed courses
+ *
+ * @param {Array} events - All progress events for a student
+ * @returns {Object} { badges, rank, rankName, rankIcon, coursesCompleted }
+ */
+function calculateBadgesAndRank(events) {
+  if (!events || events.length === 0) {
+    return {
+      badges: 0,
+      rank: 0,
+      rankName: 'Beginner',
+      rankIcon: '🎯',
+      coursesCompleted: 0
+    };
+  }
+
+  // Find unique completed courses
+  const completedCourses = new Set();
+
+  events.forEach(event => {
+    if (event.event_type === 'course_completed') {
+      try {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        if (data.course_id) {
+          completedCourses.add(data.course_id);
+        }
+      } catch (error) {
+        console.error('Error parsing course_completed event:', error);
+      }
+    }
+  });
+
+  const coursesCompleted = completedCourses.size;
+
+  // Get rank info
+  const rankInfo = getRankInfo(coursesCompleted);
+
+  return {
+    badges: coursesCompleted,
+    rank: coursesCompleted,
+    rankName: rankInfo.name,
+    rankIcon: rankInfo.icon,
+    coursesCompleted: coursesCompleted
+  };
+}
+
+/**
+ * Get rank information for a given number of completed courses
+ *
+ * @param {number} coursesCompleted - Number of courses completed (0-30)
+ * @returns {Object} { level, name, icon }
+ */
+function getRankInfo(coursesCompleted) {
+  const ranks = [
+    { level: 0, name: 'Beginner', icon: '🎯' },
+    { level: 1, name: 'Apprentice', icon: '📚' },
+    { level: 2, name: 'Student', icon: '✏️' },
+    { level: 3, name: 'Learner', icon: '📖' },
+    { level: 4, name: 'Scholar', icon: '🎓' },
+    { level: 5, name: 'Intermediate', icon: '⭐' },
+    { level: 6, name: 'Practitioner', icon: '🔧' },
+    { level: 7, name: 'Developer', icon: '💻' },
+    { level: 8, name: 'Builder', icon: '🏗️' },
+    { level: 9, name: 'Creator', icon: '🎨' },
+    { level: 10, name: 'Advanced', icon: '🚀' },
+    { level: 11, name: 'Skilled', icon: '💪' },
+    { level: 12, name: 'Professional', icon: '💼' },
+    { level: 13, name: 'Specialist', icon: '🎯' },
+    { level: 14, name: 'Expert', icon: '⚡' },
+    { level: 15, name: 'Master', icon: '🏆' },
+    { level: 16, name: 'Veteran', icon: '🛡️' },
+    { level: 17, name: 'Elite', icon: '⭐⭐' },
+    { level: 18, name: 'Champion', icon: '🏅' },
+    { level: 19, name: 'Hero', icon: '🦸' },
+    { level: 20, name: 'Legend', icon: '👑' },
+    { level: 21, name: 'Grandmaster', icon: '🎖️' },
+    { level: 22, name: 'Sage', icon: '🧙' },
+    { level: 23, name: 'Guru', icon: '🕉️' },
+    { level: 24, name: 'Virtuoso', icon: '🎼' },
+    { level: 25, name: 'Prodigy', icon: '🌟' },
+    { level: 26, name: 'Genius', icon: '🧠' },
+    { level: 27, name: 'Titan', icon: '💎' },
+    { level: 28, name: 'Deity', icon: '⚡⚡' },
+    { level: 29, name: 'Immortal', icon: '🔥' },
+    { level: 30, name: 'Transcendent', icon: '✨' }
+  ];
+
+  // Cap at level 30
+  const level = Math.min(coursesCompleted, 30);
+  return ranks[level];
 }
 
 // Organize events by level

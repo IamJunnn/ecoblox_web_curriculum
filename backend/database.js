@@ -35,10 +35,10 @@ function addStudent(name, email, classCode, callback) {
 }
 
 // Helper: Add progress event
-function addProgressEvent(studentId, eventType, level, data, callback) {
+function addProgressEvent(studentId, eventType, level, courseId, data, callback) {
   db.run(
-    'INSERT INTO progress_events (student_id, event_type, level, data) VALUES (?, ?, ?, ?)',
-    [studentId, eventType, level, JSON.stringify(data)],
+    'INSERT INTO progress_events (student_id, event_type, level, course_id, data) VALUES (?, ?, ?, ?, ?)',
+    [studentId, eventType, level, courseId, JSON.stringify(data)],
     callback
   );
 }

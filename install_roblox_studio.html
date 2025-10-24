@@ -335,6 +335,60 @@
             height: 26px;
         }
 
+        /* Complete Quest Button */
+        .complete-btn {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            font-size: 1.3em;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: not-allowed;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            opacity: 0.6;
+        }
+
+        .complete-btn.enabled {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            cursor: pointer;
+            opacity: 1;
+            animation: pulse 2s infinite;
+        }
+
+        .complete-btn.enabled:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+        }
+
+        .btn-icon {
+            font-size: 1.4em;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .quest-complete-show {
+            animation: slideDown 0.6s ease-out;
+        }
+
         /* Next Steps Section */
         .next-steps {
             background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
@@ -611,8 +665,19 @@
             </div>
         </div>
 
+        <!-- Complete Quest Button -->
+        <div id="complete-button-container" style="text-align: center; margin: 30px 0; display: none;">
+            <button id="complete-quest-btn" class="complete-btn" onclick="completeQuest()">
+                <span class="btn-icon">🏆</span>
+                <span class="btn-text">Complete Quest!</span>
+            </button>
+            <p id="complete-help-text" style="color: #888; margin-top: 10px; font-size: 0.9em;">
+                Complete all 5 steps above to unlock this button
+            </p>
+        </div>
+
         <!-- Next Steps -->
-        <div class="next-steps">
+        <div class="next-steps" id="quest-complete-section" style="display: none;">
             <h2>🎉 Quest Complete!</h2>
             <p>
                 <strong>Congratulations!</strong> You've successfully installed Roblox Studio on your computer. You're now ready to begin your journey as a Roblox creator!
@@ -664,6 +729,20 @@
     // STUDENT SESSION & PROGRESS TRACKING
     // ===========================
 
+    // API_CONFIG is loaded from auth.js (see <head>)
+    // Verify it's available before using
+    if (typeof API_CONFIG === 'undefined') {
+        console.error('❌ CRITICAL: API_CONFIG not loaded from auth.js');
+        alert('Configuration error: API not available. Please refresh the page or contact your teacher.');
+    }
+
+    // Course ID for Install Roblox Studio
+    // Course ID 4 = "Install Roblox Studio" (from courses table)
+    // Using level: 0 to distinguish from Studio Basics (which uses levels 1-6)
+    const COURSE_ID = 4;
+    const COURSE_LEVEL = 0;
+    const TOTAL_STEPS = 5;
+
     // Student session data
     let studentSession = {
         id: null,
@@ -676,6 +755,7 @@
     let completedSteps = 0;
     let totalXP = 0;
     let offlineQueue = [];
+    let questCompleted = false;
 
     const STORAGE_KEY = 'installStudioProgress';
     const OFFLINE_QUEUE_KEY = 'installStudioOfflineQueue';
@@ -686,7 +766,7 @@
 
     window.addEventListener('DOMContentLoaded', () => {
         checkStudentLogin();
-        loadProgress();  // Fallback to localStorage if no backend session
+        // Note: loadProgress() is now called inside checkStudentLogin() only if no session
     });
 
     // ===========================
@@ -706,9 +786,9 @@
             console.log(`✅ Student logged in: ${session.name} (ID: ${session.id})`);
 
             // Track session start
-            trackProgress('session_start', 1, {});
+            trackProgress('session_start', COURSE_LEVEL, {});
 
-            // Load progress from backend
+            // Load progress from backend ONLY (not localStorage)
             loadBackendProgress();
 
             // Load offline queue
@@ -725,7 +805,9 @@
                 }
             }
         } else {
-            console.log('ℹ️ No student session - progress will only save to localStorage');
+            // Student NOT logged in - load from localStorage ONLY
+            console.log('ℹ️ No student session - loading progress from localStorage');
+            loadProgress();
         }
     }
 
@@ -743,6 +825,7 @@
             student_id: studentSession.id,
             event_type: eventType,
             level: level,
+            course_id: COURSE_ID,  // FIXED: Include course_id=4 for Install Studio
             data: data
         };
 
@@ -786,9 +869,9 @@
 
             const data = await response.json();
 
-            // Filter events for this course (level = 1 for Install Studio)
+            // Filter events for this course (level = 0 for Install Studio)
             const installEvents = data.all_events ? data.all_events.filter(e =>
-                e.event_type === 'step_checked' && e.level === 1
+                e.event_type === 'step_checked' && e.level === COURSE_LEVEL
             ) : [];
 
             console.log(`📊 Found ${installEvents.length} step events from backend`);
@@ -796,8 +879,19 @@
             // Restore checkboxes from backend data
             const completedStepsSet = new Set();
             installEvents.forEach(event => {
-                if (event.data && event.data.step) {
-                    completedStepsSet.add(event.data.step);
+                // Parse data if it's a JSON string (backend stores as string)
+                let eventData = event.data;
+                if (typeof eventData === 'string') {
+                    try {
+                        eventData = JSON.parse(eventData);
+                    } catch (e) {
+                        console.error('Failed to parse event data:', e);
+                        return;
+                    }
+                }
+
+                if (eventData && eventData.step) {
+                    completedStepsSet.add(eventData.step);
                 }
             });
 
@@ -828,6 +922,9 @@
 
             // Update display
             updateStatsDisplay();
+
+            // Check if all steps completed (enable Complete button)
+            checkAllStepsCompleted();
 
             console.log(`✅ Loaded ${completedSteps} completed steps from backend`);
 
@@ -903,7 +1000,7 @@
             totalXP = completedSteps * 20;
 
             // TRACK THIS EVENT TO BACKEND
-            trackProgress('step_checked', 1, {
+            trackProgress('step_checked', COURSE_LEVEL, {
                 step: stepNumber,
                 completed: true
             });
@@ -919,6 +1016,9 @@
 
         // Update stats display
         updateStatsDisplay();
+
+        // Check if all steps completed (enable Complete button)
+        checkAllStepsCompleted();
     }
 
     // ===========================
@@ -972,13 +1072,16 @@
         try {
             const progress = JSON.parse(savedProgress);
 
+            // Reset completedSteps before counting (prevents double-counting if called multiple times)
+            completedSteps = 0;
+
             for (let i = 1; i <= 5; i++) {
                 const stepKey = `step-${i}`;
                 if (progress[stepKey]) {
                     const checkbox = document.getElementById(`checkbox-${i}`);
                     const stepItem = document.getElementById(`step-${i}`);
 
-                    if (checkbox && stepItem && !checkbox.checked) {
+                    if (checkbox && stepItem) {
                         checkbox.checked = true;
                         stepItem.classList.add('completed');
                         completedSteps++;
@@ -992,10 +1095,132 @@
             // Update display
             updateStatsDisplay();
 
+            // Check if all steps completed (enable Complete button)
+            checkAllStepsCompleted();
+
+            console.log(`✅ Loaded ${completedSteps} completed steps from localStorage`);
+
         } catch (error) {
             console.error('Error loading progress:', error);
         }
     }
+
+    // ===========================
+    // CHECK ALL STEPS COMPLETED
+    // ===========================
+
+    function checkAllStepsCompleted() {
+        const completeBtn = document.getElementById('complete-quest-btn');
+        const btnContainer = document.getElementById('complete-button-container');
+        const helpText = document.getElementById('complete-help-text');
+
+        if (!completeBtn || !btnContainer || !helpText) return;
+
+        if (completedSteps === TOTAL_STEPS) {
+            // All steps completed - enable button
+            btnContainer.style.display = 'block';
+            completeBtn.classList.add('enabled');
+            helpText.textContent = '🎉 All steps completed! Click to finish the quest!';
+            helpText.style.color = '#28a745';
+            helpText.style.fontWeight = 'bold';
+        } else {
+            // Not all completed - show progress
+            btnContainer.style.display = 'block';
+            completeBtn.classList.remove('enabled');
+            const remaining = TOTAL_STEPS - completedSteps;
+            helpText.textContent = `Complete ${remaining} more step${remaining > 1 ? 's' : ''} to unlock this button`;
+            helpText.style.color = '#888';
+            helpText.style.fontWeight = 'normal';
+        }
+    }
+
+    // ===========================
+    // COMPLETE QUEST
+    // ===========================
+
+    function completeQuest() {
+        // Only allow if all steps are completed
+        if (completedSteps !== TOTAL_STEPS) {
+            alert('Please complete all 5 steps first!');
+            return;
+        }
+
+        if (questCompleted) {
+            alert('Quest already completed!');
+            return;
+        }
+
+        questCompleted = true;
+
+        // Track completion to backend
+        trackProgress('quest_completed', COURSE_LEVEL, {
+            total_steps: TOTAL_STEPS,
+            total_xp: totalXP,
+            completion_time: new Date().toISOString()
+        });
+
+        // Track level unlock (like Studio Basics does for quizzes)
+        trackProgress('level_unlocked', TOTAL_STEPS, {
+            level: TOTAL_STEPS,
+            xp_earned: totalXP
+        });
+
+        // Hide button
+        document.getElementById('complete-button-container').style.display = 'none';
+
+        // Show Quest Complete section with animation
+        const questCompleteSection = document.getElementById('quest-complete-section');
+        questCompleteSection.style.display = 'block';
+        questCompleteSection.classList.add('quest-complete-show');
+
+        // Smooth scroll to celebration
+        questCompleteSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // Show confetti
+        showConfetti();
+
+        console.log('🎉 Quest completed!');
+    }
+
+    // ===========================
+    // CONFETTI ANIMATION
+    // ===========================
+
+    function showConfetti() {
+        const confettiEmojis = ['🎉', '🎊', '⭐', '✨', '🏆', '🎯', '🎮', '💎'];
+        const confettiCount = 30;
+
+        for (let i = 0; i < confettiCount; i++) {
+            setTimeout(() => {
+                const confetti = document.createElement('div');
+                confetti.textContent = confettiEmojis[Math.floor(Math.random() * confettiEmojis.length)];
+                confetti.style.position = 'fixed';
+                confetti.style.left = Math.random() * 100 + '%';
+                confetti.style.top = '-50px';
+                confetti.style.fontSize = (1.5 + Math.random() * 1) + 'em';
+                confetti.style.zIndex = '9999';
+                confetti.style.pointerEvents = 'none';
+                confetti.style.transition = 'all 3s ease-out';
+
+                document.body.appendChild(confetti);
+
+                // Animate down
+                setTimeout(() => {
+                    confetti.style.top = '100vh';
+                    confetti.style.opacity = '0';
+                    confetti.style.transform = `rotate(${Math.random() * 720}deg)`;
+                }, 10);
+
+                // Remove after animation
+                setTimeout(() => {
+                    confetti.remove();
+                }, 3000);
+            }, i * 100);
+        }
+    }
+
+    // Make functions available globally (for onclick handlers)
+    window.completeQuest = completeQuest;
 </script>
 
 </body>

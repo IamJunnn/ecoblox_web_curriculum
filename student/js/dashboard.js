@@ -12,7 +12,7 @@ import {
   saveLastCourse,
   clearSession
 } from '../../shared/js/session.js';
-import { getStudent } from '../../shared/js/api-client.js';
+import { getStudent, getCourses } from '../../shared/js/api-client.js';
 import {
   formatRelativeTime,
   calculateRank
@@ -117,13 +117,14 @@ function updateStudentSummary(data) {
   // Update stat badges
   document.getElementById('totalXPBadge').textContent = summary.total_xp || 0;
 
-  // Calculate badges (1 badge per 100 XP, max 12)
-  const badgesEarned = Math.min(Math.floor((summary.total_xp || 0) / 100), 12);
-  document.getElementById('badgesEarned').textContent = `${badgesEarned}/12`;
+  // NEW (v2.0): Update badges (1 badge per course completed, max 30)
+  const badges = summary.badges || 0;
+  document.getElementById('badgesEarned').textContent = `${badges}/30`;
 
-  // Update rank
-  const rank = calculateRank(summary.total_xp || 0);
-  document.getElementById('currentRank').textContent = rank;
+  // NEW (v2.0): Update rank (course-based progression)
+  const rankName = summary.rankName || 'Beginner';
+  const rankIcon = summary.rankIcon || '🎯';
+  document.getElementById('currentRank').textContent = `${rankIcon} ${rankName}`;
 
   // Update class info
   document.getElementById('classCodeDisplay').textContent = currentStudent.class_code || 'None';
@@ -137,51 +138,29 @@ function updateStudentSummary(data) {
 // ===========================
 
 async function loadCourses() {
-  // For now, use hardcoded courses
-  // Later, this will fetch from API
-  availableCourses = [
-    {
-      id: 1,
-      title: '🎯 Course 1: Studio Basics',
-      description: 'Game-Style Interactive Tutorial',
-      url: '../versions/v9_game_style.html',
-      status: 'active',
-      requirements: null,
-      total_levels: 6,
-      icon: '🎮'
-    },
-    {
-      id: 2,
-      title: '🔒 Course 2: Advanced Scripting',
-      description: 'Lua Programming Deep-Dive',
-      url: '../versions/v10_advanced.html',
-      status: 'locked',
-      requirements: {
-        course_id: 1,
-        min_xp: 300,
-        min_progress: 80
-      },
-      total_levels: 8,
-      icon: '💻'
-    },
-    {
-      id: 3,
-      title: '🔒 Course 3: Multiplayer Games',
-      description: 'Building Multi-Player Experiences',
-      url: '../versions/v11_multiplayer.html',
-      status: 'locked',
-      requirements: {
-        course_id: 2,
-        min_xp: 600,
-        min_progress: 80
-      },
-      total_levels: 10,
-      icon: '👥'
-    }
-  ];
+  try {
+    // Fetch courses from API
+    const data = await getCourses();
 
-  // Render courses
-  renderCourses();
+    // Store courses and sort by display_order
+    availableCourses = data.courses.sort((a, b) => a.display_order - b.display_order);
+
+    // Render courses
+    renderCourses();
+
+  } catch (error) {
+    console.error('Error loading courses:', error);
+
+    // Show error message
+    const container = document.getElementById('coursesContainer');
+    if (container) {
+      container.innerHTML = `
+        <div class="alert alert-danger">
+          ❌ Failed to load courses. Make sure the backend server is running.
+        </div>
+      `;
+    }
+  }
 }
 
 // ===========================
@@ -198,51 +177,96 @@ function renderCourses() {
 
   const summary = studentProgress.summary || {};
 
+  // Calculate overall progress by averaging all course completions
+  const courseProgressValues = [];
+
   container.innerHTML = availableCourses.map(course => {
+    // Extract icon (first emoji) from title
+    const iconMatch = course.title.match(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u);
+    const icon = iconMatch ? iconMatch[0] : '📚';
+
+    // Get unlock_requirements (already parsed by backend)
+    let requirements = course.unlock_requirements || null;
+
     // Determine if course is unlocked
-    let isUnlocked = course.status === 'active';
+    let isUnlocked = !requirements; // No requirements = always unlocked
     let canUnlock = true;
     let unmetRequirements = [];
 
-    if (course.requirements) {
+    if (requirements) {
       // Check if requirements are met
-      if (course.requirements.min_xp && (summary.total_xp || 0) < course.requirements.min_xp) {
+      if (requirements.min_xp && (summary.total_xp || 0) < requirements.min_xp) {
         canUnlock = false;
-        unmetRequirements.push(`Earn ${course.requirements.min_xp} XP (Current: ${summary.total_xp || 0} XP)`);
+        unmetRequirements.push(`Earn ${requirements.min_xp} XP (Current: ${summary.total_xp || 0} XP)`);
       }
 
-      if (course.requirements.min_progress && (summary.progress_percentage || 0) < course.requirements.min_progress) {
+      if (requirements.min_progress && (summary.progress_percentage || 0) < requirements.min_progress) {
         canUnlock = false;
-        unmetRequirements.push(`Complete ${course.requirements.min_progress}% of Course ${course.requirements.course_id}`);
+        unmetRequirements.push(`Complete ${requirements.min_progress}% of Course ${requirements.course_id}`);
       }
 
       isUnlocked = canUnlock;
     }
 
-    // Course progress (for Course 1, use actual progress)
+    // Course progress - CALCULATE PER-COURSE METRICS
     let courseProgress = 0;
     let currentLevel = 0;
     let xpEarned = 0;
     let timeSpent = 'Not started';
     let lastActive = 'Never';
 
-    if (course.id === 1 && studentProgress) {
-      courseProgress = summary.progress_percentage || 0;
-      currentLevel = summary.current_level || 0;
-      xpEarned = summary.total_xp || 0;
+    if ((course.id === 1 || course.id === 4) && studentProgress) {
+      // STEP 1: Filter events for THIS course only
+      // Now that backend saves course_id correctly, we can use simple filtering
+      const courseEvents = studentProgress.all_events
+        ? studentProgress.all_events.filter(e => e.course_id === course.id)
+        : [];
 
-      if (studentProgress.student && studentProgress.student.last_active) {
-        lastActive = formatRelativeTime(studentProgress.student.last_active);
+      // STEP 2: Calculate course-specific XP
+      let courseXP = 0;
+
+      // First, check if there's a completion event with total_xp
+      const completionEvent = courseEvents.find(e =>
+        e.event_type === 'quest_completed' ||
+        e.event_type === 'course_completed'
+      );
+
+      if (completionEvent) {
+        // Use total XP from completion event (most accurate)
+        try {
+          const data = typeof completionEvent.data === 'string'
+            ? JSON.parse(completionEvent.data)
+            : completionEvent.data;
+          if (data.total_xp) {
+            courseXP = data.total_xp;
+          }
+        } catch {}
       }
 
-      // Calculate time spent - only count meaningful progress events
-      const progressEvents = studentProgress.all_events
-        ? studentProgress.all_events.filter(e =>
-            e.event_type === 'step_checked' ||
-            e.event_type === 'quiz_answered' ||
-            e.event_type === 'level_unlocked'
-          )
-        : [];
+      // If no completion event or no total_xp, calculate from individual events
+      if (courseXP === 0) {
+        courseEvents.forEach(e => {
+          if (e.event_type === 'step_checked') {
+            courseXP += 20; // 20 XP per step
+          } else if (e.event_type === 'quiz_answered') {
+            try {
+              const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+              if (data.correct === true) {
+                courseXP += 100; // 100 XP per correct quiz
+              }
+            } catch {}
+          }
+        });
+      }
+
+      xpEarned = courseXP;
+
+      // STEP 3: Calculate course-specific time spent
+      const progressEvents = courseEvents.filter(e =>
+        e.event_type === 'step_checked' ||
+        e.event_type === 'quiz_answered' ||
+        e.event_type === 'level_unlocked'
+      );
 
       if (progressEvents.length > 0) {
         // Estimate: ~2 minutes per progress event
@@ -253,7 +277,41 @@ function renderCourses() {
       } else {
         timeSpent = 'Not started';
       }
+
+      // STEP 4: Calculate course-specific last active
+      if (courseEvents.length > 0) {
+        // Get most recent timestamp for THIS course
+        const timestamps = courseEvents.map(e => new Date(e.timestamp));
+        const mostRecent = new Date(Math.max(...timestamps));
+        lastActive = formatRelativeTime(mostRecent.toISOString());
+      } else {
+        lastActive = 'Never';
+      }
+
+      // STEP 5: Calculate course-specific levels/progress
+      const levelsUnlocked = new Set(
+        courseEvents
+          .filter(e => e.event_type === 'level_unlocked')
+          .map(e => e.level)
+      );
+      currentLevel = levelsUnlocked.size;
+
+      // Check for course completion
+      const questCompleted = courseEvents.some(e =>
+        e.event_type === 'quest_completed' ||
+        e.event_type === 'course_completed'
+      );
+
+      if (questCompleted) {
+        courseProgress = 100;
+        currentLevel = course.total_levels; // Show as fully completed
+      } else {
+        courseProgress = Math.round((currentLevel / course.total_levels) * 100);
+      }
     }
+
+    // Track this course's progress for overall calculation
+    courseProgressValues.push(courseProgress);
 
     // Status badge
     let statusBadge = '';
@@ -277,7 +335,7 @@ function renderCourses() {
       <div class="course-card ${isUnlocked ? 'active' : 'locked'}">
         <div class="course-header">
           <div>
-            <h4 class="course-title">${course.icon} ${course.title.replace(/^🎯 |^🔒 /, '')}</h4>
+            <h4 class="course-title">${course.title}</h4>
             <p class="course-description">${course.description}</p>
           </div>
           <span class="course-status-badge ${statusClass}">${statusBadge}</span>
@@ -344,6 +402,18 @@ function renderCourses() {
       </div>
     `;
   }).join('');
+
+  // Calculate and update overall progress (average of all courses)
+  if (courseProgressValues.length > 0) {
+    const overallProgress = Math.round(
+      courseProgressValues.reduce((sum, val) => sum + val, 0) / courseProgressValues.length
+    );
+
+    // Update overall progress display in dashboard header
+    document.getElementById('overallProgressText').textContent = `${overallProgress}%`;
+    document.getElementById('overallProgressBar').style.width = `${overallProgress}%`;
+    document.getElementById('overallProgressBar').textContent = `${overallProgress}%`;
+  }
 }
 
 // ===========================
@@ -364,8 +434,8 @@ function startCourse(courseUrl, courseId) {
     localStorage.setItem('studentSession', JSON.stringify(session));
   }
 
-  // Redirect to course
-  window.location.href = courseUrl;
+  // Redirect to course (add ../ since dashboard is in /student/ folder)
+  window.location.href = '../' + courseUrl;
 }
 
 function viewCourseProgress(courseId) {
