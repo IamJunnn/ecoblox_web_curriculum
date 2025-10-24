@@ -5,12 +5,17 @@ This guide provides a reusable template for creating interactive tutorial pages 
 ## Overview
 
 The tutorial template includes:
-- ✅ Game-style header with stats bar
+- ✅ Game-style header with dynamic stats bar
 - ✅ Interactive checkboxes for step tracking
-- ✅ Progress saving to localStorage
+- ✅ **Backend API integration** for progress tracking
+- ✅ **Real-time XP and level updates**
+- ✅ **Offline queue** for failed requests
+- ✅ Progress saving to localStorage (backup)
 - ✅ Responsive design for mobile/tablet/desktop
 - ✅ Consistent styling with v9_game_style.html
 - ✅ Integration with authentication system
+- ✅ **Student session management**
+- ✅ **Progress restore** from backend
 
 ---
 
@@ -56,20 +61,27 @@ The tutorial template includes:
         <a href="student/dashboard.html" class="back-button">← Dashboard</a>
     </header>
 
-    <!-- Stats Bar -->
+    <!-- Stats Bar (DYNAMIC - Updates in real-time) -->
     <div class="stats-bar">
         <div class="stat-item">
-            <span class="stat-icon">[EMOJI]</span>
-            <span class="stat-label">Quest:</span>
-            <span class="stat-value">[Quest Name]</span>
+            <span class="stat-icon">📦</span>
+            <span class="stat-label">Levels:</span>
+            <span class="stat-value" id="levels-display">0/[TOTAL]</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-icon">⭐</span>
+            <span class="stat-label">XP Earned:</span>
+            <span class="stat-value" id="xp-display">0</span>
         </div>
         <div class="stat-item">
             <span class="stat-icon">⏱️</span>
-            <span class="stat-label">Time:</span>
-            <span class="stat-value">~[X] mins</span>
+            <span class="stat-label">Time Spent:</span>
+            <span class="stat-value" id="time-display">Not started</span>
         </div>
         <div class="stat-item">
-            <span class="rank-badge">[EMOJI] [Quest Level]</span>
+            <span class="stat-icon">🕒</span>
+            <span class="stat-label">Last Active:</span>
+            <span class="stat-value" id="lastactive-display">Never</span>
         </div>
     </div>
 
@@ -913,7 +925,50 @@ Use lowercase with hyphens:
 
 ---
 
+## 🚀 Backend Progress Tracking (NEW!)
+
+### Overview
+
+As of version 2.0, tutorials now support full backend API integration for tracking student progress in the database.
+
+### Critical Bug Fix: Reset Progress Negative Values
+
+**Problem:** When admin resets student progress, checkboxes remain checked but `completedSteps = 0`, causing negative values when unchecking.
+
+**Required Fixes:**
+
+1. **In `loadBackendProgress()` - Uncheck ALL boxes first:**
+```javascript
+// Reset ALL checkboxes before loading backend data
+for (let i = 1; i <= TOTAL_STEPS; i++) {
+    const checkbox = document.getElementById(`checkbox-${i}`);
+    const stepItem = document.getElementById(`step-${i}`);
+    if (checkbox) {
+        checkbox.checked = false;
+        stepItem.classList.remove('completed');
+    }
+}
+```
+
+2. **In `toggleStep()` - Prevent negative values:**
+```javascript
+} else {
+    stepItem.classList.remove('completed');
+    completedSteps = Math.max(0, completedSteps - 1);  // Never go below 0
+    totalXP = completedSteps * XP_PER_STEP;
+}
+```
+
+See `install_roblox_studio.html` for complete implementation example.
+
+---
+
 ## Troubleshooting
+
+### Negative XP/Levels after Reset Progress
+- **Cause:** UI checkboxes not synced with backend after admin reset
+- **Fix:** Implement both fixes above in `loadBackendProgress()` and `toggleStep()`
+- **Test:** Have admin reset progress → Refresh tutorial page → Should show 0/X
 
 ### Checkboxes not saving
 - Verify unique `STORAGE_KEY` in JavaScript
@@ -938,6 +993,17 @@ Use lowercase with hyphens:
 ---
 
 ## Version History
+
+- **v2.0** (2025-01-23) - Backend Integration & Bug Fixes
+  - ✅ Backend API progress tracking
+  - ✅ Real-time XP and level updates
+  - ✅ Student session management
+  - ✅ Offline queue for failed requests
+  - ✅ Progress restoration from database
+  - ✅ **FIX:** Reset Progress negative values bug
+  - ✅ **FIX:** Prevent negative XP/levels
+  - ✅ Dynamic stats bar (4 stats)
+  - ✅ Time tracking
 
 - **v1.0** (2025-01-22) - Initial template based on install_roblox_studio.html
   - Interactive checkboxes

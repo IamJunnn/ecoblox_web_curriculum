@@ -446,17 +446,24 @@
     <!-- Stats Bar -->
     <div class="stats-bar">
         <div class="stat-item">
-            <span class="stat-icon">🎯</span>
-            <span class="stat-label">Quest:</span>
-            <span class="stat-value">Install Studio</span>
+            <span class="stat-icon">📦</span>
+            <span class="stat-label">Levels:</span>
+            <span class="stat-value" id="levels-display">0/5</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-icon">⭐</span>
+            <span class="stat-label">XP Earned:</span>
+            <span class="stat-value" id="xp-display">0</span>
         </div>
         <div class="stat-item">
             <span class="stat-icon">⏱️</span>
-            <span class="stat-label">Time:</span>
-            <span class="stat-value">~5 mins</span>
+            <span class="stat-label">Time Spent:</span>
+            <span class="stat-value" id="time-display">Not started</span>
         </div>
         <div class="stat-item">
-            <span class="rank-badge">🏁 Beginner Quest</span>
+            <span class="stat-icon">🕒</span>
+            <span class="stat-label">Last Active:</span>
+            <span class="stat-value" id="lastactive-display">Never</span>
         </div>
     </div>
 
@@ -654,30 +661,296 @@
     });
 
     // ===========================
-    // CHECKBOX PROGRESS TRACKING
+    // STUDENT SESSION & PROGRESS TRACKING
     // ===========================
 
-    const STORAGE_KEY = 'installStudioProgress';
+    // Student session data
+    let studentSession = {
+        id: null,
+        name: null,
+        class_code: null,
+        startTime: null
+    };
 
-    // Load saved progress on page load
+    // Progress tracking
+    let completedSteps = 0;
+    let totalXP = 0;
+    let offlineQueue = [];
+
+    const STORAGE_KEY = 'installStudioProgress';
+    const OFFLINE_QUEUE_KEY = 'installStudioOfflineQueue';
+
+    // ===========================
+    // PAGE INITIALIZATION
+    // ===========================
+
     window.addEventListener('DOMContentLoaded', () => {
-        loadProgress();
+        checkStudentLogin();
+        loadProgress();  // Fallback to localStorage if no backend session
     });
 
-    // Toggle step completion
+    // ===========================
+    // STUDENT LOGIN CHECK
+    // ===========================
+
+    function checkStudentLogin() {
+        const session = getSession();  // From auth.js
+
+        if (session && session.id) {
+            // Student is logged in via dashboard
+            studentSession.id = session.id;
+            studentSession.name = session.name;
+            studentSession.class_code = session.class_code;
+            studentSession.startTime = new Date().toISOString();
+
+            console.log(`✅ Student logged in: ${session.name} (ID: ${session.id})`);
+
+            // Track session start
+            trackProgress('session_start', 1, {});
+
+            // Load progress from backend
+            loadBackendProgress();
+
+            // Load offline queue
+            const savedQueue = localStorage.getItem(OFFLINE_QUEUE_KEY);
+            if (savedQueue) {
+                try {
+                    offlineQueue = JSON.parse(savedQueue);
+                    if (offlineQueue.length > 0) {
+                        console.log(`🔄 Found ${offlineQueue.length} queued events, retrying...`);
+                        retryOfflineQueue();
+                    }
+                } catch (e) {
+                    console.error('Error loading offline queue:', e);
+                }
+            }
+        } else {
+            console.log('ℹ️ No student session - progress will only save to localStorage');
+        }
+    }
+
+    // ===========================
+    // BACKEND PROGRESS TRACKING
+    // ===========================
+
+    async function trackProgress(eventType, level, data = {}) {
+        if (!studentSession.id) {
+            console.warn('⚠️ No student session - progress not tracked to backend');
+            return;
+        }
+
+        const event = {
+            student_id: studentSession.id,
+            event_type: eventType,
+            level: level,
+            data: data
+        };
+
+        try {
+            const response = await fetch(`${API_CONFIG.baseURL}${API_CONFIG.endpoints.progress}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(event)
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to track progress');
+            }
+
+            console.log(`✅ Tracked: ${eventType} for level ${level}`, data);
+
+        } catch (error) {
+            console.error('❌ Failed to track progress:', error);
+            // Add to offline queue
+            offlineQueue.push(event);
+            localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(offlineQueue));
+            console.log('💾 Added to offline queue');
+        }
+    }
+
+    // ===========================
+    // LOAD PROGRESS FROM BACKEND
+    // ===========================
+
+    async function loadBackendProgress() {
+        if (!studentSession.id) return;
+
+        try {
+            console.log(`🔄 Loading progress for student ${studentSession.id}...`);
+
+            const response = await fetch(`${API_CONFIG.baseURL}/students/${studentSession.id}`);
+
+            if (!response.ok) {
+                throw new Error('Failed to load progress');
+            }
+
+            const data = await response.json();
+
+            // Filter events for this course (level = 1 for Install Studio)
+            const installEvents = data.all_events ? data.all_events.filter(e =>
+                e.event_type === 'step_checked' && e.level === 1
+            ) : [];
+
+            console.log(`📊 Found ${installEvents.length} step events from backend`);
+
+            // Restore checkboxes from backend data
+            const completedStepsSet = new Set();
+            installEvents.forEach(event => {
+                if (event.data && event.data.step) {
+                    completedStepsSet.add(event.data.step);
+                }
+            });
+
+            // 🔧 FIX: Reset ALL checkboxes first (prevents negative values after admin reset)
+            for (let i = 1; i <= 5; i++) {
+                const checkbox = document.getElementById(`checkbox-${i}`);
+                const stepItem = document.getElementById(`step-${i}`);
+                if (checkbox) {
+                    checkbox.checked = false;
+                    stepItem.classList.remove('completed');
+                }
+            }
+
+            // Then check only boxes from backend
+            completedStepsSet.forEach(stepNum => {
+                const checkbox = document.getElementById(`checkbox-${stepNum}`);
+                const stepItem = document.getElementById(`step-${stepNum}`);
+
+                if (checkbox) {
+                    checkbox.checked = true;
+                    stepItem.classList.add('completed');
+                }
+            });
+
+            // Calculate completed steps and XP
+            completedSteps = completedStepsSet.size;
+            totalXP = completedSteps * 20;
+
+            // Update display
+            updateStatsDisplay();
+
+            console.log(`✅ Loaded ${completedSteps} completed steps from backend`);
+
+        } catch (error) {
+            console.error('❌ Failed to load progress from backend:', error);
+            console.log('📦 Falling back to localStorage...');
+            // Fall back to localStorage
+            loadProgress();
+        }
+    }
+
+    // ===========================
+    // OFFLINE QUEUE RETRY
+    // ===========================
+
+    async function retryOfflineQueue() {
+        if (offlineQueue.length === 0) return;
+
+        const queue = [...offlineQueue];
+        offlineQueue = [];
+
+        let successCount = 0;
+
+        for (const event of queue) {
+            try {
+                const response = await fetch(`${API_CONFIG.baseURL}${API_CONFIG.endpoints.progress}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(event)
+                });
+
+                if (response.ok) {
+                    successCount++;
+                } else {
+                    offlineQueue.push(event);  // Re-queue if failed
+                }
+            } catch (error) {
+                offlineQueue.push(event);  // Re-queue if failed
+            }
+        }
+
+        localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(offlineQueue));
+
+        if (successCount > 0) {
+            console.log(`✅ Successfully synced ${successCount} queued events`);
+        }
+        if (offlineQueue.length > 0) {
+            console.log(`⚠️ ${offlineQueue.length} events still queued`);
+        }
+    }
+
+    // Retry when back online
+    window.addEventListener('online', () => {
+        if (offlineQueue.length > 0) {
+            console.log(`🔄 Back online! Retrying ${offlineQueue.length} queued events...`);
+            retryOfflineQueue();
+        }
+    });
+
+    // ===========================
+    // TOGGLE STEP (ENHANCED)
+    // ===========================
+
     function toggleStep(stepNumber) {
         const checkbox = document.getElementById(`checkbox-${stepNumber}`);
         const stepItem = document.getElementById(`step-${stepNumber}`);
 
         if (checkbox.checked) {
             stepItem.classList.add('completed');
+            completedSteps++;
+
+            // Calculate XP (20 XP per step)
+            totalXP = completedSteps * 20;
+
+            // TRACK THIS EVENT TO BACKEND
+            trackProgress('step_checked', 1, {
+                step: stepNumber,
+                completed: true
+            });
+
         } else {
             stepItem.classList.remove('completed');
+            completedSteps = Math.max(0, completedSteps - 1);  // 🔧 FIX: Never go below 0
+            totalXP = completedSteps * 20;
         }
 
-        // Save progress
+        // Save progress to localStorage (backup)
         saveProgress();
+
+        // Update stats display
+        updateStatsDisplay();
     }
+
+    // ===========================
+    // UPDATE STATS DISPLAY
+    // ===========================
+
+    function updateStatsDisplay() {
+        // Update levels (steps completed out of 5)
+        document.getElementById('levels-display').textContent = `${completedSteps}/5`;
+
+        // Update XP
+        document.getElementById('xp-display').textContent = totalXP;
+
+        // Update time spent
+        if (studentSession.startTime) {
+            const elapsed = new Date() - new Date(studentSession.startTime);
+            const minutes = Math.floor(elapsed / 60000);
+            document.getElementById('time-display').textContent =
+                minutes < 1 ? 'Just started' : `${minutes} min${minutes > 1 ? 's' : ''}`;
+        }
+
+        // Update last active
+        document.getElementById('lastactive-display').textContent =
+            formatRelativeTime(new Date().toISOString());
+    }
+
+    // Update time display every minute
+    setInterval(updateStatsDisplay, 60000);
+
+    // ===========================
+    // LOCALSTORAGE BACKUP
+    // ===========================
 
     // Save progress to localStorage
     function saveProgress() {
@@ -705,12 +978,20 @@
                     const checkbox = document.getElementById(`checkbox-${i}`);
                     const stepItem = document.getElementById(`step-${i}`);
 
-                    if (checkbox && stepItem) {
+                    if (checkbox && stepItem && !checkbox.checked) {
                         checkbox.checked = true;
                         stepItem.classList.add('completed');
+                        completedSteps++;
                     }
                 }
             }
+
+            // Calculate XP
+            totalXP = completedSteps * 20;
+
+            // Update display
+            updateStatsDisplay();
+
         } catch (error) {
             console.error('Error loading progress:', error);
         }
