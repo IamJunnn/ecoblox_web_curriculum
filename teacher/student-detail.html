@@ -14,11 +14,173 @@
   <!-- Shared CSS Variables -->
   <link rel="stylesheet" href="../shared/css/variables.css">
 
-  <!-- Admin styles (reused) -->
-  <link rel="stylesheet" href="../admin/style.css">
+  <style>
+    body {
+      background: #f5f7fa;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
 
-  <!-- Teacher-specific styles -->
-  <link rel="stylesheet" href="css/teacher.css">
+    .dashboard-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px 0;
+      margin-bottom: 25px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .header-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 15px;
+      padding: 25px;
+      margin-bottom: 25px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 15px;
+    }
+
+    .stat-box {
+      background: rgba(255,255,255,0.2);
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .stat-box .stat-value {
+      font-size: 1.8em;
+      font-weight: bold;
+    }
+
+    .stat-box .stat-label {
+      font-size: 0.85em;
+      margin-top: 5px;
+    }
+
+    .accordion-item {
+      background: white;
+      border: none;
+      margin-bottom: 15px;
+      border-radius: 15px !important;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .accordion-button {
+      background: white;
+      font-size: 1.05em;
+      font-weight: 600;
+      padding: 16px 20px;
+      border: none;
+    }
+
+    .accordion-button:not(.collapsed) {
+      background: #f8f9fa;
+      color: #667eea;
+      box-shadow: none;
+    }
+
+    .accordion-button::after {
+      margin-left: auto;
+    }
+
+    .accordion-body {
+      padding: 20px;
+      background: #fafbfc;
+    }
+
+    .course-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8em;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+
+    .badge-completed { background: #4caf50; color: white; }
+    .badge-in-progress { background: #ff9800; color: white; }
+    .badge-not-started { background: #e0e0e0; color: #666; }
+
+    .course-header-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin: 15px 0;
+    }
+
+    .metric-card {
+      background: white;
+      padding: 12px;
+      border-radius: 10px;
+      text-align: center;
+      border: 2px solid #e0e0e0;
+    }
+
+    .metric-value {
+      font-size: 1.5em;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .metric-label {
+      font-size: 0.85em;
+      color: #666;
+      margin-top: 5px;
+    }
+
+    .progress {
+      height: 25px;
+      border-radius: 12px;
+      margin: 15px 0;
+    }
+
+    .levels-list {
+      margin-top: 20px;
+    }
+
+    .level-row {
+      background: white;
+      padding: 12px 15px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-left: 4px solid #ccc;
+    }
+
+    .level-row.completed {
+      border-left-color: #4caf50;
+      background: #f1f8f4;
+    }
+
+    .level-row.in-progress {
+      border-left-color: #ff9800;
+      background: #fff8f0;
+    }
+
+    @media (max-width: 768px) {
+      .stat-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
 </head>
 <body>
 
@@ -28,7 +190,7 @@
       <div class="d-flex justify-content-between align-items-center">
         <div>
           <h1 id="studentName">Student Details</h1>
-          <p class="subtitle" id="studentInfo">Loading...</p>
+          <p class="mb-0" id="studentInfo">Loading...</p>
         </div>
         <div>
           <a href="index.html" class="btn btn-outline-light">← Back to Dashboard</a>
@@ -38,93 +200,60 @@
   </header>
 
   <!-- Main Content -->
-  <div class="container mt-4">
+  <div class="container mb-5">
 
-    <!-- Summary Cards -->
-    <div class="row mb-4">
-      <div class="col-md-3">
-        <div class="stat-card">
-          <div class="stat-icon">📊</div>
-          <div class="stat-value" id="detailProgress">0%</div>
-          <div class="stat-label">Progress</div>
+    <!-- Student Summary Header -->
+    <div class="header-card">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h2 id="studentNameHeader">Loading...</h2>
+          <p class="mb-0" id="studentInfoHeader">Loading...</p>
+        </div>
+        <div>
+          <span class="badge bg-light text-dark" style="font-size: 1.2em; padding: 10px 20px;" id="studentRank">📚 -</span>
         </div>
       </div>
 
-      <div class="col-md-3">
-        <div class="stat-card">
-          <div class="stat-icon">🎯</div>
-          <div class="stat-value" id="detailLevel">0</div>
-          <div class="stat-label">Current Level</div>
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="stat-value" id="overallProgress">0%</div>
+          <div class="stat-label">Overall Progress</div>
         </div>
-      </div>
-
-      <div class="col-md-3">
-        <div class="stat-card">
-          <div class="stat-icon">⭐</div>
-          <div class="stat-value" id="detailXP">0</div>
+        <div class="stat-box">
+          <div class="stat-value" id="totalXP">💎 0</div>
           <div class="stat-label">Total XP</div>
         </div>
-      </div>
-
-      <div class="col-md-3">
-        <div class="stat-card">
-          <div class="stat-icon">✅</div>
-          <div class="stat-value" id="detailSteps">0</div>
-          <div class="stat-label">Steps Completed</div>
+        <div class="stat-box">
+          <div class="stat-value" id="totalBadges">🥇 0/31</div>
+          <div class="stat-label">Badges</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="completedCourses">🎯 0/4</div>
+          <div class="stat-label">Courses</div>
         </div>
       </div>
     </div>
 
-    <!-- Progress by Level -->
-    <div class="card mb-4">
-      <div class="card-header">
-        <h5 class="mb-0">📚 Progress by Level</h5>
+    <h3 class="mb-3">📚 Course Details</h3>
+    <p class="text-muted">Click on a course to view detailed progress</p>
+
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="text-center py-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
       </div>
-      <div class="card-body">
-        <div id="levelProgressContainer">
-          <div class="text-center py-3">
-            <div class="spinner-border text-primary" role="status">
-              <span class="visually-hidden">Loading...</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <p class="mt-3 text-muted">Loading course details...</p>
     </div>
 
-    <!-- Activity Chart -->
-    <div class="card mb-4">
-      <div class="card-header">
-        <h5 class="mb-0">📊 Activity Timeline</h5>
-      </div>
-      <div class="card-body">
-        <canvas id="progressChart"></canvas>
-      </div>
+    <!-- Accordion for Courses -->
+    <div class="accordion" id="coursesAccordion" style="display: none;">
+      <!-- Courses will be dynamically inserted here -->
     </div>
 
-    <!-- Recent Activity -->
-    <div class="card mb-4">
-      <div class="card-header">
-        <h5 class="mb-0">🕒 Recent Activity</h5>
-      </div>
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-sm">
-            <thead>
-              <tr>
-                <th>Timestamp</th>
-                <th>Event Type</th>
-                <th>Level</th>
-                <th>Details</th>
-              </tr>
-            </thead>
-            <tbody id="eventsTableBody">
-              <tr>
-                <td colspan="4" class="text-center py-3">Loading...</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+    <!-- Action Buttons -->
+    <div class="mt-4" id="actionButtons" style="display: none;">
+      <a href="index.html" class="btn btn-outline-secondary">← Back to Student List</a>
+      <button class="btn btn-primary" onclick="alert('Message feature coming soon!')">📧 Send Message to Student</button>
     </div>
 
   </div>
