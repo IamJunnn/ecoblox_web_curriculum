@@ -118,8 +118,9 @@ function updateStudentSummary(data) {
   document.getElementById('totalXPBadge').textContent = summary.total_xp || 0;
 
   // NEW (v2.0): Update badges (1 badge per course completed, max 30)
+  // Add 1 to count Beginner badge (always earned)
   const badges = summary.badges || 0;
-  document.getElementById('badgesEarned').textContent = `${badges}/30`;
+  document.getElementById('badgesEarned').textContent = `${badges + 1}/31`;
 
   // NEW (v2.0): Update rank (course-based progression)
   const rankName = summary.rankName || 'Beginner';
@@ -450,7 +451,8 @@ function viewCourseProgress(courseId) {
 // ===========================
 
 function viewAllBadges() {
-  alert('View All Badges feature coming soon!');
+  // Navigate to badges gallery page
+  window.location.href = '../badges/badges.html';
 }
 
 function viewLeaderboard() {
