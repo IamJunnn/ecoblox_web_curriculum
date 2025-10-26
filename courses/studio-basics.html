@@ -1779,6 +1779,13 @@
         }
 
         function showCompletion() {
+            // TRACK QUEST COMPLETION EVENT
+            trackProgress('quest_completed', totalLevels, {
+                total_xp: totalXP,
+                completed_levels: completedLevels,
+                timestamp: new Date().toISOString()
+            });
+
             const completionMsg = document.getElementById('completion-message');
             completionMsg.style.display = 'block';
 

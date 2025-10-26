@@ -1201,6 +1201,8 @@ if (hasCourseProgress && studentProgress) {
 
 **Root Cause:** Missing `level_unlocked` event when quest completes.
 
+**⚠️ CRITICAL FIX (2025-10-26):** The `showCompletion()` function must also track `quest_completed` event!
+
 **Required Implementation in Tutorial HTML:**
 
 ```javascript
@@ -1229,13 +1231,33 @@ function completeQuest() {
   // Show completion UI
   showCompletionSection();
 }
+
+// ⚠️ CRITICAL: Also track in showCompletion() function!
+function showCompletion() {
+  // TRACK QUEST COMPLETION EVENT (CRITICAL FOR 100% PROGRESS!)
+  trackProgress('quest_completed', totalLevels, {
+    total_xp: totalXP,
+    completed_levels: completedLevels,
+    timestamp: new Date().toISOString()
+  });
+
+  // ... rest of showCompletion() code ...
+  const completionMsg = document.getElementById('completion-message');
+  completionMsg.style.display = 'block';
+  // ... badge display logic ...
+}
 ```
 
 **Why Both Events?**
 - `quest_completed` - Records the completion event with metadata
 - `level_unlocked` - Backend recognizes this for progress calculation
 
-**Impact:** Complete Quest button now works like Studio Basics quiz completion.
+**Why Track in showCompletion() Too?**
+- Ensures `quest_completed` event is ALWAYS created when completion screen shows
+- Without this, students who answer final quiz but don't click button will show 83% instead of 100%
+- Dashboard requires `quest_completed` event to display 100% progress (see `student/js/dashboard.js:296-307`)
+
+**Impact:** Complete Quest button now works like Studio Basics quiz completion, and dashboard always shows 100% progress after full course completion.
 
 ---
 
@@ -3030,6 +3052,18 @@ Quick reference guides, troubleshooting tips, and support resources.
 ---
 
 ## Version History
+
+- **v4.2** (2025-10-26) - showCompletion() Quest Tracking Fix
+  - ⚠️ **CRITICAL FIX:** `showCompletion()` function now tracks `quest_completed` event
+  - ✅ **Problem Solved:** Progress stuck at 83% despite earning 1080 XP (full completion)
+  - ✅ **Root Cause:** Students completed final quiz but `showCompletion()` didn't create completion event
+  - ✅ **Solution:** Added `trackProgress('quest_completed', ...)` at start of `showCompletion()` function
+  - ✅ **Impact:** Dashboard now always shows 100% progress when course completed
+  - ✅ **Files Changed:** `courses/studio-basics.html:1781-1787` (+6 lines)
+  - ✅ **Pattern 3 Updated:** Added showCompletion() example with critical fix warning
+  - 📝 **Before:** Student earned 1080 XP → Progress showed 83% (5/6 levels) ❌
+  - 📝 **After:** Student earned 1080 XP → Progress shows 100% (6/6 levels) ✅
+  - 📝 **Dashboard Logic:** Requires `quest_completed` event to display 100% (see `student/js/dashboard.js:296-307`)
 
 - **v4.1** (2025-10-24) - Badge & Rank Backward Compatibility Fix
   - ✅ **CRITICAL FIX:** `calculateBadgesAndRank()` now accepts BOTH event types
