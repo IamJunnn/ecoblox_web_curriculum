@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 NestJS Authentication Test</h1>
+
+    <div class="test-section">
+        <h2>Student Login (PIN)</h2>
+        <button onclick="testStudentLogin()">Test Student Login</button>
+        <div id="student-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Teacher Login (Password)</h2>
+        <button onclick="testTeacherLogin()">Test Teacher Login</button>
+        <div id="teacher-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Admin Login (Password)</h2>
+        <button onclick="testAdminLogin()">Test Admin Login</button>
+        <div id="admin-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Protected Endpoint Test</h2>
+        <button onclick="testProtectedEndpoint()">Test Protected Route</button>
+        <div id="protected-result" class="result"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3300';
+        let currentToken = null;
+
+        async function testStudentLogin() {
+            const resultDiv = document.getElementById('student-result');
+            resultDiv.textContent = 'Testing student login...';
+
+            try {
+                const response = await fetch(`${API_URL}/api/auth/student-login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'alice@school.com',
+                        pin: '1234'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    currentToken = 'dummy-token';
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ SUCCESS!\n\nStudent: ${data.session.name}\nRole: ${data.session.role}\nClass: ${data.session.class_code}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ FAILED!\n\nError: ${data.message || 'Unknown error'}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Network Error!\n\n${error.message}`;
+            }
+        }
+
+        async function testTeacherLogin() {
+            const resultDiv = document.getElementById('teacher-result');
+            resultDiv.textContent = 'Testing teacher login...';
+
+            try {
+                const response = await fetch(`${API_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'teacher@robloxacademy.com',
+                        password: 'password123'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    currentToken = 'dummy-token';
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ SUCCESS!\n\nTeacher: ${data.user.name}\nRole: ${data.user.role}\nClass: ${data.user.class_code}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ FAILED!\n\nError: ${data.message || 'Unknown error'}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Network Error!\n\n${error.message}`;
+            }
+        }
+
+        async function testAdminLogin() {
+            const resultDiv = document.getElementById('admin-result');
+            resultDiv.textContent = 'Testing admin login...';
+
+            try {
+                const response = await fetch(`${API_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'admin@robloxacademy.com',
+                        password: 'password123'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    currentToken = 'dummy-token';
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ SUCCESS!\n\nAdmin: ${data.user.name}\nRole: ${data.user.role}\nClass: ${data.user.class_code}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ FAILED!\n\nError: ${data.message || 'Unknown error'}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Network Error!\n\n${error.message}`;
+            }
+        }
+
+        async function testProtectedEndpoint() {
+            const resultDiv = document.getElementById('protected-result');
+
+            if (!currentToken) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '❌ No token available!\n\nPlease login first using one of the buttons above.';
+                return;
+            }
+
+            resultDiv.textContent = 'Testing protected endpoint with token...';
+
+            try {
+                // Test a protected endpoint (we'll use the root endpoint with auth header)
+                const response = await fetch(`${API_URL}/`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
+
+                const text = await response.text();
+
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ SUCCESS!\n\nProtected route accessed successfully!\n\nResponse: ${text}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ FAILED!\n\nStatus: ${response.status}\nResponse: ${text}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Network Error!\n\n${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

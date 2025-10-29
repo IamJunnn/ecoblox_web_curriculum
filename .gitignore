@@ -1,28 +1,61 @@
-# Preview and temporary files (local only)
-layout-preview.html
-
-# Node modules
+# Dependencies
 node_modules/
 
+# Build outputs
+dist/
+build/
+*.js.map
+
 # Database files
+*.sqlite
+*.sqlite3
 *.db
 *.db-journal
 
 # Environment variables
 .env
 .env.local
+.env.*.local
 
-# OS files
-.DS_Store
-Thumbs.db
-
-# Editor files
+# IDE and editor files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
 # Logs
+logs/
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+nul
+
+# NestJS specific
+.nest/
+
+# Next.js specific
+.next/
+out/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Backup and cleanup folders
+*_CLEANUP/
+backup/
+
+# Preview and temporary files (local only)
+layout-preview.html
