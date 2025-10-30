@@ -27,32 +27,25 @@ async function seed() {
   // Create courses
   const courses = [
     {
-      title: 'Introduction to Roblox Studio',
-      description: 'Learn the basics of Roblox Studio and game development',
-      total_levels: 6,
+      title: 'Install Roblox Studio',
+      description: 'Download and install Roblox Studio on your computer',
+      total_levels: 1,
       display_order: 1,
-      url: '/courses/intro-to-roblox',
+      url: '/courses/1',
     },
     {
-      title: 'Lua Programming Basics',
-      description: 'Master the fundamentals of Lua scripting',
-      total_levels: 6,
+      title: 'Create a Roblox Account',
+      description: 'Set up your Roblox account to start creating',
+      total_levels: 1,
       display_order: 2,
-      url: '/courses/lua-basics',
+      url: '/courses/2',
     },
     {
-      title: 'Building Your First Game',
-      description: 'Create a simple obstacle course game',
-      total_levels: 8,
+      title: 'Studio Basics',
+      description: 'Learn the Roblox Studio interface and essential tools',
+      total_levels: 6,
       display_order: 3,
-      url: '/courses/first-game',
-    },
-    {
-      title: 'Advanced Scripting',
-      description: 'Deep dive into advanced Lua concepts',
-      total_levels: 10,
-      display_order: 4,
-      url: '/courses/advanced-scripting',
+      url: '/courses/3',
     },
   ];
 
@@ -62,30 +55,8 @@ async function seed() {
     console.log(`✅ Created course: ${course.title}`);
   }
 
-  // Create users
+  // Create users (Teacher and Admin only - students should be created by teachers/admins)
   const users = [
-    // Students
-    {
-      email: 'alice@school.com',
-      name: 'Alice Student',
-      role: 'student',
-      classCode: 'CLASS2025',
-      pinCode: '1234',
-    },
-    {
-      email: 'bob@school.com',
-      name: 'Bob Student',
-      role: 'student',
-      classCode: 'CLASS2025',
-      pinCode: '5678',
-    },
-    {
-      email: 'charlie@school.com',
-      name: 'Charlie Student',
-      role: 'student',
-      classCode: 'CLASS2025',
-      pinCode: '9012',
-    },
     // Teacher
     {
       email: 'teacher@robloxacademy.com',
@@ -110,30 +81,21 @@ async function seed() {
       name: userData.name,
       role: userData.role as any,
       class_code: userData.classCode,
-      pin_code: userData.pinCode,
       password_hash: userData.password ? await bcrypt.hash(userData.password, 10) : undefined,
     });
 
     await studentRepository.save(student);
-
-    if (userData.role === 'student') {
-      console.log(`✅ Created student: ${student.name} (PIN: ${userData.pinCode})`);
-    } else {
-      console.log(`✅ Created ${userData.role}: ${student.name}`);
-    }
+    console.log(`✅ Created ${userData.role}: ${student.name}`);
   }
 
   console.log('\n🎉 Database seeded successfully!');
-  console.log('\n📝 Test Credentials:');
+  console.log('\n📝 Login Credentials:');
   console.log('-------------------');
-  console.log('Students:');
-  console.log('  alice@school.com / PIN: 1234');
-  console.log('  bob@school.com / PIN: 5678');
-  console.log('  charlie@school.com / PIN: 9012');
-  console.log('\nTeacher:');
+  console.log('Teacher:');
   console.log('  teacher@robloxacademy.com / password123');
   console.log('\nAdmin:');
   console.log('  admin@robloxacademy.com / password123');
+  console.log('\n💡 Note: Students should be created by teachers or admins through the portal.');
 
   await app.close();
 }

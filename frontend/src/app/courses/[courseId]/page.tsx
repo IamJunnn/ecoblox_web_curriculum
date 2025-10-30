@@ -7,6 +7,7 @@ import coursesAPI from '@/lib/api/courses.api'
 import { Loader2 } from 'lucide-react'
 import { ROLE_COLORS } from '@/lib/theme'
 import InstallRobloxStudio from './InstallRobloxStudio'
+import CreateRobloxAccount from './CreateRobloxAccount'
 import StudioBasics from './StudioBasics'
 
 interface Course {
@@ -85,9 +86,11 @@ export default function CoursePage() {
   }
 
   // Render the appropriate course component based on courseId
-  if (courseId === 4) {
+  if (courseId === 1) {
     return <InstallRobloxStudio course={course} />
-  } else if (courseId === 1) {
+  } else if (courseId === 2) {
+    return <CreateRobloxAccount course={course} />
+  } else if (courseId === 3) {
     return <StudioBasics course={course} />
   }
 

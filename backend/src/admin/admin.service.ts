@@ -97,12 +97,14 @@ export class AdminService {
     // Get student count for each teacher
     const teachersWithStudentCount = await Promise.all(
       teachers.map(async (teacher) => {
-        const studentCount = await this.studentRepository.count({
-          where: {
-            class_code: teacher.class_code,
-            role: UserRole.STUDENT,
-          },
-        });
+        const studentCount = teacher.class_code
+          ? await this.studentRepository.count({
+              where: {
+                class_code: teacher.class_code,
+                role: UserRole.STUDENT,
+              },
+            })
+          : 0;
 
         return {
           ...teacher,
@@ -308,7 +310,7 @@ export class AdminService {
         throw new NotFoundException('Teacher not found');
       }
 
-      classCode = teacher.class_code;
+      classCode = teacher.class_code || 'UNASSIGNED';
     }
 
     // Create student
@@ -331,11 +333,13 @@ export class AdminService {
 
     // Send welcome email to the student with their login credentials
     try {
-      await this.emailService.sendStudentWelcome(
-        savedStudent.email,
-        savedStudent.name,
-        savedStudent.pin_code,
-      );
+      if (savedStudent.pin_code) {
+        await this.emailService.sendStudentWelcome(
+          savedStudent.email,
+          savedStudent.name,
+          savedStudent.pin_code,
+        );
+      }
     } catch (error) {
       // Log error but don't fail the student creation
       console.error('Failed to send welcome email:', error);
@@ -667,6 +671,27 @@ export class AdminService {
     if (updateStudentDto.name) student.name = updateStudentDto.name;
     if (updateStudentDto.email) student.email = updateStudentDto.email;
     if (updateStudentDto.pin_code) student.pin_code = updateStudentDto.pin_code;
+
+    // Update teacher assignment if provided
+    if (updateStudentDto.teacher_id !== undefined) {
+      if (updateStudentDto.teacher_id === null || updateStudentDto.teacher_id === 0) {
+        // Unassign teacher
+        student.created_by_teacher_id = undefined;
+        student.class_code = 'UNASSIGNED';
+      } else {
+        // Verify teacher exists and get their class code
+        const teacher = await this.studentRepository.findOne({
+          where: { id: updateStudentDto.teacher_id, role: UserRole.TEACHER },
+        });
+
+        if (!teacher) {
+          throw new NotFoundException('Teacher not found');
+        }
+
+        student.created_by_teacher_id = updateStudentDto.teacher_id;
+        student.class_code = teacher.class_code || 'UNASSIGNED';
+      }
+    }
 
     const updatedStudent = await this.studentRepository.save(student);
 

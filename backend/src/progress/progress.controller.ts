@@ -38,6 +38,20 @@ export class ProgressController {
     };
   }
 
+  // Skip/complete a course (for students who already have the prerequisite)
+  @Post('skip-course')
+  async skipCourse(
+    @Body() body: { student_id: number; course_id: number; total_steps: number },
+  ) {
+    const { student_id, course_id, total_steps } = body;
+    const result = await this.progressService.skipCourse(
+      student_id,
+      course_id,
+      total_steps,
+    );
+    return result;
+  }
+
   // Get student progress
   @Get('student/:id')
   @UseGuards(JwtAuthGuard)

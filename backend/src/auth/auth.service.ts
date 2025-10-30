@@ -21,7 +21,7 @@ export class AuthService {
       select: ['id', 'name', 'email', 'password_hash', 'role', 'class_code'],
     });
 
-    if (user && (await bcrypt.compare(password, user.password_hash))) {
+    if (user && user.password_hash && (await bcrypt.compare(password, user.password_hash))) {
       const { password_hash, ...result } = user;
       return result;
     }

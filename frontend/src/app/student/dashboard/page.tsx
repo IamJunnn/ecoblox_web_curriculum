@@ -77,13 +77,16 @@ export default function StudentDashboard() {
           })
 
           // Determine total steps based on course
-          // Course 4 (Install Roblox Studio) has 5 steps in level 1
-          // Course 1 (Studio Basics) has 4 steps per level × 6 levels = 24 steps
+          // Course 1 (Install Roblox Studio) has 5 steps in level 1
+          // Course 2 (Create a Roblox Account) has 7 steps in level 1
+          // Course 3 (Studio Basics) has 4 steps per level × 6 levels = 24 steps
           let totalSteps = 0
-          if (course.id === 4) {
-            totalSteps = 5 // 5 steps total in level 1
-          } else if (course.id === 1) {
-            totalSteps = course.total_levels * 4 // 4 steps per level × 6 levels
+          if (course.id === 1) {
+            totalSteps = 5 // Install Roblox Studio - 5 steps
+          } else if (course.id === 2) {
+            totalSteps = 7 // Create a Roblox Account - 7 steps
+          } else if (course.id === 3) {
+            totalSteps = course.total_levels * 4 // Studio Basics - 4 steps per level × 6 levels = 24 steps
           }
 
           const isCompleted = totalSteps > 0 && completedSteps.size >= totalSteps

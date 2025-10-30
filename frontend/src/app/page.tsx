@@ -139,8 +139,8 @@ function StudentLoginForm() {
 
     try {
       await studentLogin(email, pin)
-      setLoading(false)
-      router.push('/student/dashboard')
+      // Use window.location for hard redirect to ensure cookies are set
+      window.location.href = '/student/dashboard'
     } catch (error: any) {
       setError(error.response?.data?.message || 'Invalid email or PIN. Please try again.')
       setLoading(false)
@@ -221,8 +221,8 @@ function TeacherLoginForm() {
 
     try {
       await login(email, password, UserRole.TEACHER)
-      setLoading(false)
-      router.push('/teacher/dashboard')
+      // Use window.location for hard redirect to ensure cookies are set
+      window.location.href = '/teacher/dashboard'
     } catch (error: any) {
       setError(error.response?.data?.message || 'Invalid credentials. Please try again.')
       setLoading(false)

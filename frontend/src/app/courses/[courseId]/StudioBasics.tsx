@@ -47,6 +47,8 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
   const [totalXP, setTotalXP] = useState(0)
   const [showCelebration, setShowCelebration] = useState(false)
   const [expandedLevels, setExpandedLevels] = useState<Set<number>>(new Set([1]))
+  // Store shuffled options for each level: { levelNumber: { options: string[], correctIndex: number } }
+  const [shuffledQuizzes, setShuffledQuizzes] = useState<Record<number, { options: string[], correctIndex: number }>>({})
 
   const levels: LevelData[] = [
     {
@@ -172,6 +174,41 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
     }
   ]
 
+  // Shuffle quiz options for randomization
+  const shuffleQuizOptions = () => {
+    const shuffled: Record<number, { options: string[], correctIndex: number }> = {}
+
+    levels.forEach(level => {
+      const originalOptions = [...level.quiz.options]
+      const originalCorrectIndex = level.quiz.correctIndex
+
+      // Create array of indices [0, 1, 2, 3]
+      const indices = originalOptions.map((_, idx) => idx)
+
+      // Fisher-Yates shuffle algorithm
+      for (let i = indices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[indices[i], indices[j]] = [indices[j], indices[i]]
+      }
+
+      // Map shuffled options and find new correct index
+      const shuffledOptions = indices.map(idx => originalOptions[idx])
+      const newCorrectIndex = indices.indexOf(originalCorrectIndex)
+
+      shuffled[level.levelNumber] = {
+        options: shuffledOptions,
+        correctIndex: newCorrectIndex
+      }
+    })
+
+    setShuffledQuizzes(shuffled)
+  }
+
+  useEffect(() => {
+    // Initialize shuffled quizzes once on mount
+    shuffleQuizOptions()
+  }, [])
+
   useEffect(() => {
     if (user) {
       loadProgress()
@@ -242,8 +279,8 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
     for (const [level, answerIndex] of Object.entries(quizAnswers)) {
       if (answerIndex !== null) {
         const levelNum = parseInt(level)
-        const levelData = levels[levelNum - 1]
-        if (levelData && answerIndex === levelData.quiz.correctIndex) {
+        const shuffledQuiz = shuffledQuizzes[levelNum]
+        if (shuffledQuiz && answerIndex === shuffledQuiz.correctIndex) {
           xp += XP_PER_QUIZ
         }
       }
@@ -306,7 +343,8 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
     // Track progress
     if (user) {
       const levelData = levels[levelNumber - 1]
-      const isCorrect = answerIndex === levelData.quiz.correctIndex
+      const shuffledQuiz = shuffledQuizzes[levelNumber]
+      const isCorrect = shuffledQuiz && answerIndex === shuffledQuiz.correctIndex
 
       try {
         await progressAPI.createProgress({
@@ -325,7 +363,8 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
         if (levelNumber === levels.length && isCorrect) {
           const allCorrect = levels.every((level, idx) => {
             const answer = newAnswers[idx + 1]
-            return answer === level.quiz.correctIndex
+            const shuffled = shuffledQuizzes[idx + 1]
+            return shuffled && answer === shuffled.correctIndex
           })
 
           if (allCorrect) {
@@ -387,7 +426,8 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
             const levelSteps = completedSteps[level.levelNumber] || new Set<number>()
             const allStepsComplete = levelSteps.size === STEPS_PER_LEVEL
             const quizAnswered = quizAnswers[level.levelNumber] !== undefined && quizAnswers[level.levelNumber] !== null
-            const quizCorrect = quizAnswered && quizAnswers[level.levelNumber] === level.quiz.correctIndex
+            const shuffledQuiz = shuffledQuizzes[level.levelNumber]
+            const quizCorrect = quizAnswered && shuffledQuiz && quizAnswers[level.levelNumber] === shuffledQuiz.correctIndex
             const levelComplete = allStepsComplete && quizCorrect
 
             return (
@@ -460,59 +500,61 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
                     </div>
 
                     {/* Quiz */}
-                    <div className="bg-gradient-to-r from-teal-500 to-cyan-500 rounded-lg p-6 text-white">
-                      <h4 className="text-2xl font-bold mb-4">🎯 Level {level.levelNumber} Challenge</h4>
-                      <p className="text-lg mb-4">{level.quiz.question}</p>
-                      <div className="space-y-3">
-                        {level.quiz.options.map((option, idx) => {
-                          const isSelected = quizAnswers[level.levelNumber] === idx
-                          const showResult = showQuizResult[level.levelNumber]
-                          const isCorrect = idx === level.quiz.correctIndex
+                    {shuffledQuiz && (
+                      <div className="bg-gradient-to-r from-teal-500 to-cyan-500 rounded-lg p-6 text-white">
+                        <h4 className="text-2xl font-bold mb-4">🎯 Level {level.levelNumber} Challenge</h4>
+                        <p className="text-lg mb-4">{level.quiz.question}</p>
+                        <div className="space-y-3">
+                          {shuffledQuiz.options.map((option, idx) => {
+                            const isSelected = quizAnswers[level.levelNumber] === idx
+                            const showResult = showQuizResult[level.levelNumber]
+                            const isCorrect = idx === shuffledQuiz.correctIndex
 
-                          return (
-                            <button
-                              key={idx}
-                              onClick={() => handleQuizAnswer(level.levelNumber, idx)}
-                              disabled={showResult}
-                              className={`w-full p-4 rounded-lg text-left font-medium transition ${
-                                showResult && isCorrect
-                                  ? 'bg-green-500 text-white'
-                                  : showResult && isSelected && !isCorrect
-                                  ? 'bg-red-500 text-white'
-                                  : isSelected
-                                  ? 'bg-white/30 text-white'
-                                  : 'bg-white/10 hover:bg-white/20 text-white'
-                              }`}
-                            >
-                              {String.fromCharCode(65 + idx)}. {option}
-                              {showResult && isCorrect && ' ✓'}
-                              {showResult && isSelected && !isCorrect && ' ✗'}
-                            </button>
-                          )
-                        })}
-                      </div>
-                      {showQuizResult[level.levelNumber] && (
-                        <div className="mt-4">
-                          {quizAnswers[level.levelNumber] === level.quiz.correctIndex ? (
-                            <p className="text-green-200 font-bold">
-                              ✓ Correct! You earned {XP_PER_QUIZ} XP!
-                            </p>
-                          ) : (
-                            <div>
-                              <p className="text-red-200 font-bold mb-3">
-                                ✗ Try again! Review the content above.
-                              </p>
+                            return (
                               <button
-                                onClick={() => handleRetakeQuiz(level.levelNumber)}
-                                className="px-4 py-2 bg-white text-green-600 font-medium rounded-lg hover:bg-gray-100 transition"
+                                key={idx}
+                                onClick={() => handleQuizAnswer(level.levelNumber, idx)}
+                                disabled={showResult}
+                                className={`w-full p-4 rounded-lg text-left font-medium transition ${
+                                  showResult && isCorrect
+                                    ? 'bg-green-500 text-white'
+                                    : showResult && isSelected && !isCorrect
+                                    ? 'bg-red-500 text-white'
+                                    : isSelected
+                                    ? 'bg-white/30 text-white'
+                                    : 'bg-white/10 hover:bg-white/20 text-white'
+                                }`}
                               >
-                                Try Again
+                                {String.fromCharCode(65 + idx)}. {option}
+                                {showResult && isCorrect && ' ✓'}
+                                {showResult && isSelected && !isCorrect && ' ✗'}
                               </button>
-                            </div>
-                          )}
+                            )
+                          })}
                         </div>
-                      )}
-                    </div>
+                        {showQuizResult[level.levelNumber] && (
+                          <div className="mt-4">
+                            {quizAnswers[level.levelNumber] === shuffledQuiz.correctIndex ? (
+                              <p className="text-green-200 font-bold">
+                                ✓ Correct! You earned {XP_PER_QUIZ} XP!
+                              </p>
+                            ) : (
+                              <div>
+                                <p className="text-red-200 font-bold mb-3">
+                                  ✗ Try again! Review the content above.
+                                </p>
+                                <button
+                                  onClick={() => handleRetakeQuiz(level.levelNumber)}
+                                  className="px-4 py-2 bg-white text-green-600 font-medium rounded-lg hover:bg-gray-100 transition"
+                                >
+                                  Try Again
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -40,6 +40,7 @@ export interface UpdateStudentDto {
   name?: string
   email?: string
   pin_code?: string
+  teacher_id?: number
 }
 
 export interface UpdateStudentResponse {

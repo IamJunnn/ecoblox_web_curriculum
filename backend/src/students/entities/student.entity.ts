@@ -21,10 +21,10 @@ export class Student {
   email: string;
 
   @Column({ nullable: true, select: false })
-  password_hash: string;
+  password_hash?: string;
 
   @Column({ nullable: true, length: 4 })
-  pin_code: string;
+  pin_code?: string;
 
   @Column({
     type: 'varchar',
@@ -34,13 +34,13 @@ export class Student {
   role: UserRole;
 
   @Column({ nullable: true })
-  class_code: string;
+  class_code?: string;
 
   @Column({ nullable: true })
-  created_by_teacher_id: number;
+  created_by_teacher_id?: number;
 
   @Column({ nullable: true })
-  invitation_token: string;
+  invitation_token?: string;
 
   @Column({ default: false })
   is_verified: boolean;

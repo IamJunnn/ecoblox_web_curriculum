@@ -71,6 +71,16 @@ const progressAPI = {
     )
     return response.data
   },
+
+  // Skip/complete a course (for students who already have prerequisite)
+  skipCourse: async (data: {
+    student_id: number
+    course_id: number
+    total_steps: number
+  }) => {
+    const response = await apiClient.post('/api/progress/skip-course', data)
+    return response.data
+  },
 }
 
 export default progressAPI

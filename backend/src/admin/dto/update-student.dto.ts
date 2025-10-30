@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsString, Length, Matches } from 'class-validator';
+import { IsEmail, IsOptional, IsString, Length, Matches, IsNumber } from 'class-validator';
 
 export class UpdateStudentDto {
   @IsOptional()
@@ -14,4 +14,8 @@ export class UpdateStudentDto {
   @Length(4, 4, { message: 'PIN must be exactly 4 characters' })
   @Matches(/^\d{4}$/, { message: 'PIN must be 4 digits' })
   pin_code?: string;
+
+  @IsOptional()
+  @IsNumber()
+  teacher_id?: number;
 }

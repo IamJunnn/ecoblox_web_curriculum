@@ -112,6 +112,71 @@ export class ProgressService {
     return false;
   }
 
+  // Skip/complete a course (for students who already have the prerequisite)
+  async skipCourse(
+    studentId: number,
+    courseId: number,
+    totalSteps: number,
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      // Check if course is already completed
+      const existingCompletion = await this.progressRepository.findOne({
+        where: {
+          student_id: studentId,
+          course_id: courseId,
+          event_type: EventType.COURSE_COMPLETED,
+        },
+      });
+
+      if (existingCompletion) {
+        return {
+          success: true,
+          message: 'Course already completed',
+        };
+      }
+
+      // Mark all steps as checked (so progress tracking works correctly)
+      for (let step = 0; step < totalSteps; step++) {
+        await this.createProgressEvent(
+          studentId,
+          courseId,
+          EventType.STEP_CHECKED,
+          1,
+          { step, skipped: true },
+        );
+      }
+
+      // Mark quest as completed
+      await this.createProgressEvent(
+        studentId,
+        courseId,
+        EventType.QUEST_COMPLETED,
+        0,
+        { all_steps_completed: true, skipped: true },
+      );
+
+      // Mark course as completed
+      await this.createProgressEvent(
+        studentId,
+        courseId,
+        EventType.COURSE_COMPLETED,
+        1,
+        { skipped: true, reason: 'Already has prerequisite knowledge/software' },
+      );
+
+      return {
+        success: true,
+        message: 'Course marked as complete',
+      };
+    } catch (error) {
+      console.error('Failed to skip course:', error);
+      return {
+        success: false,
+        message: 'Failed to skip course',
+      };
+    }
+  }
+
   // Get all progress events for a student
   async getStudentProgress(studentId: number): Promise<ProgressEvent[]> {
     return this.progressRepository.find({

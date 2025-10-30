@@ -50,7 +50,10 @@ export default function StudentDetailPage() {
     name: '',
     email: '',
     pin: '',
+    teacherId: 0,
   })
+  const [teachers, setTeachers] = useState<Array<{ id: number; name: string; email: string }>>([])
+  const [loadingTeachers, setLoadingTeachers] = useState(false)
 
   // Fetch student data on mount
   useEffect(() => {
@@ -123,13 +126,26 @@ export default function StudentDetailPage() {
     return formatDate(dateStr)
   }
 
-  const handleEditClick = () => {
+  const handleEditClick = async () => {
     if (!student) return
     setEditForm({
       name: student.name,
       email: student.email,
       pin: student.pin,
+      teacherId: student.teacherId || 0,
     })
+
+    // Fetch teachers when opening edit modal
+    setLoadingTeachers(true)
+    try {
+      const response = await adminAPI.getAllTeachers()
+      setTeachers(response.teachers)
+    } catch (err) {
+      console.error('Error fetching teachers:', err)
+    } finally {
+      setLoadingTeachers(false)
+    }
+
     setEditModal(true)
   }
 
@@ -137,22 +153,21 @@ export default function StudentDetailPage() {
     if (!student) return
 
     try {
-      const response = await adminAPI.updateStudent(student.id, {
+      const updateData: any = {
         name: editForm.name,
         email: editForm.email,
         pin_code: editForm.pin,
-      })
+      }
 
-      // Update local state with response
-      setStudent({
-        ...student,
-        name: response.student.name,
-        email: response.student.email,
-        pin: response.student.pin,
-      })
+      // Only include teacher_id if it's been changed
+      if (editForm.teacherId !== student.teacherId) {
+        updateData.teacher_id = editForm.teacherId === 0 ? null : editForm.teacherId
+      }
 
-      setEditModal(false)
-      alert('Student updated successfully!')
+      const response = await adminAPI.updateStudent(student.id, updateData)
+
+      // Refresh the page to get updated teacher info
+      window.location.reload()
     } catch (err) {
       console.error('Error updating student:', err)
       alert('Failed to update student')
@@ -555,6 +570,37 @@ export default function StudentDetailPage() {
                   }}
                 />
                 <p className="text-xs text-gray-500 mt-1">4-digit PIN code for student login</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Assigned Teacher
+                </label>
+                {loadingTeachers ? (
+                  <div className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-500 bg-gray-50">
+                    Loading teachers...
+                  </div>
+                ) : (
+                  <select
+                    value={editForm.teacherId}
+                    onChange={(e) => setEditForm({ ...editForm, teacherId: parseInt(e.target.value) })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-800 bg-white focus:outline-none"
+                    onFocus={(e) => {
+                      e.currentTarget.style.boxShadow = `0 0 0 2px ${ROLE_COLORS.student.primary}`
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.boxShadow = 'none'
+                    }}
+                  >
+                    <option value={0}>No Teacher (Unassigned)</option>
+                    {teachers.map((teacher) => (
+                      <option key={teacher.id} value={teacher.id}>
+                        {teacher.name} ({teacher.email})
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <p className="text-xs text-gray-500 mt-1">Select which teacher this student belongs to</p>
               </div>
             </div>
 
