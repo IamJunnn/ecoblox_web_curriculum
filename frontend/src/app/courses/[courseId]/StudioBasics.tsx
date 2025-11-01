@@ -44,9 +44,24 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
   const [completedSteps, setCompletedSteps] = useState<Record<number, Set<number>>>({})
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number | null>>({})
   const [showQuizResult, setShowQuizResult] = useState<Record<number, boolean>>({})
+  const [quizCorrectness, setQuizCorrectness] = useState<Record<number, boolean>>({}) // Track if quiz was correct
   const [totalXP, setTotalXP] = useState(0)
   const [showCelebration, setShowCelebration] = useState(false)
-  const [expandedLevels, setExpandedLevels] = useState<Set<number>>(new Set([1]))
+  const [expandedLevels, setExpandedLevels] = useState<Set<number>>(() => {
+    // Load expanded levels from localStorage on initial mount
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`expandedLevels_course_${course.id}`)
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved)
+          return new Set(parsed)
+        } catch (e) {
+          console.error('Failed to parse expanded levels:', e)
+        }
+      }
+    }
+    return new Set([1]) // Default to level 1 expanded
+  })
   // Store shuffled options for each level: { levelNumber: { options: string[], correctIndex: number } }
   const [shuffledQuizzes, setShuffledQuizzes] = useState<Record<number, { options: string[], correctIndex: number }>>({})
 
@@ -210,14 +225,15 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
   }, [])
 
   useEffect(() => {
-    if (user) {
+    // Load progress only after shuffled quizzes are ready
+    if (user && Object.keys(shuffledQuizzes).length > 0) {
       loadProgress()
     }
-  }, [user])
+  }, [user, shuffledQuizzes])
 
   useEffect(() => {
     calculateXP()
-  }, [completedSteps, quizAnswers])
+  }, [completedSteps, quizCorrectness])
 
   const loadProgress = async () => {
     try {
@@ -231,6 +247,7 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
       const stepsMap: Record<number, Set<number>> = {}
       const quizAnswersMap: Record<number, number> = {}
       const quizResultsMap: Record<number, boolean> = {}
+      const quizCorrectnessMap: Record<number, boolean> = {}
 
       // Process events - since they're ordered DESC (newest first),
       // we want the FIRST occurrence of each quiz answer (most recent)
@@ -241,19 +258,39 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
           const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
           const level = event.level
           const stepIndex = data.step
+          // Only add to stepsMap if is_checked is true (or undefined for backward compatibility)
+          const isChecked = event.is_checked !== false // true if checked or undefined
 
           if (!stepsMap[level]) {
             stepsMap[level] = new Set()
           }
-          stepsMap[level].add(stepIndex)
+
+          if (isChecked) {
+            stepsMap[level].add(stepIndex)
+          }
         } else if (event.event_type === 'quiz_answered') {
           const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
           const level = event.level
 
           // Only store the first (most recent) quiz answer for each level
           if (!seenQuizLevels.has(level)) {
-            quizAnswersMap[level] = data.answer_index
-            quizResultsMap[level] = true // Show result since quiz was answered
+            // Store whether this quiz was answered correctly from the database
+            quizCorrectnessMap[level] = data.correct === true
+
+            // Find the answer index in the currently shuffled options
+            const shuffledQuiz = shuffledQuizzes[level]
+            if (shuffledQuiz && data.answer_text) {
+              // Find where this answer text is in the shuffled options
+              const answerIndex = shuffledQuiz.options.indexOf(data.answer_text)
+              if (answerIndex !== -1) {
+                quizAnswersMap[level] = answerIndex
+                quizResultsMap[level] = true // Show result since quiz was answered
+              }
+            } else {
+              // Fallback for old data that doesn't have answer_text
+              quizAnswersMap[level] = data.answer_index
+              quizResultsMap[level] = true
+            }
             seenQuizLevels.add(level)
           }
         }
@@ -262,6 +299,7 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
       setCompletedSteps(stepsMap)
       setQuizAnswers(quizAnswersMap)
       setShowQuizResult(quizResultsMap)
+      setQuizCorrectness(quizCorrectnessMap)
     } catch (error) {
       console.error('Failed to load progress:', error)
     }
@@ -275,14 +313,10 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
       xp += steps.size * XP_PER_STEP
     }
 
-    // XP from correct quiz answers
-    for (const [level, answerIndex] of Object.entries(quizAnswers)) {
-      if (answerIndex !== null) {
-        const levelNum = parseInt(level)
-        const shuffledQuiz = shuffledQuizzes[levelNum]
-        if (shuffledQuiz && answerIndex === shuffledQuiz.correctIndex) {
-          xp += XP_PER_QUIZ
-        }
+    // XP from correct quiz answers - use quizCorrectness state instead of comparing indices
+    for (const [level, isCorrect] of Object.entries(quizCorrectness)) {
+      if (isCorrect === true) {
+        xp += XP_PER_QUIZ
       }
     }
 
@@ -293,24 +327,30 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
     const levelSteps = completedSteps[levelNumber] || new Set<number>()
     const newSteps = new Set(levelSteps)
 
-    if (newSteps.has(stepIndex)) {
+    const isCurrentlyChecked = newSteps.has(stepIndex)
+    const newCheckedState = !isCurrentlyChecked
+
+    if (isCurrentlyChecked) {
       newSteps.delete(stepIndex)
     } else {
       newSteps.add(stepIndex)
+    }
 
-      // Track progress
-      if (user) {
-        try {
-          await progressAPI.createProgress({
-            student_id: user.id,
-            course_id: course.id,
-            event_type: 'step_checked',
-            level: levelNumber,
-            data: { step: stepIndex }
-          })
-        } catch (error) {
-          console.error('Failed to track progress:', error)
-        }
+    // Track progress - save the checked/unchecked state
+    if (user) {
+      try {
+        await progressAPI.createProgress({
+          student_id: user.id,
+          course_id: course.id,
+          event_type: 'step_checked',
+          level: levelNumber,
+          data: {
+            step: stepIndex,
+            is_checked: newCheckedState  // Save the new state
+          }
+        })
+      } catch (error) {
+        console.error('Failed to track progress:', error)
       }
     }
 
@@ -346,6 +386,13 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
       const shuffledQuiz = shuffledQuizzes[levelNumber]
       const isCorrect = shuffledQuiz && answerIndex === shuffledQuiz.correctIndex
 
+      // Update correctness state
+      const newCorrectness = { ...quizCorrectness, [levelNumber]: isCorrect }
+      setQuizCorrectness(newCorrectness)
+
+      // Store the actual answer text so we can find it after shuffling
+      const answerText = shuffledQuiz ? shuffledQuiz.options[answerIndex] : ''
+
       try {
         await progressAPI.createProgress({
           student_id: user.id,
@@ -355,26 +402,39 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
           data: {
             question: levelData.quiz.question,
             answer_index: answerIndex,
+            answer_text: answerText, // Store the answer text
             correct: isCorrect
           }
         })
 
         // Check if all quizzes completed correctly
         if (levelNumber === levels.length && isCorrect) {
+          // Use the correctness state instead of comparing shuffled indices
           const allCorrect = levels.every((level, idx) => {
-            const answer = newAnswers[idx + 1]
-            const shuffled = shuffledQuizzes[idx + 1]
-            return shuffled && answer === shuffled.correctIndex
+            return newCorrectness[idx + 1] === true
           })
 
           if (allCorrect) {
             setShowCelebration(true)
+            // Mark quest as completed
             await progressAPI.createProgress({
               student_id: user.id,
               course_id: course.id,
               event_type: 'quest_completed',
               level: levelNumber,
               data: { all_quizzes_correct: true }
+            })
+            // Mark course as completed to unlock next course
+            await progressAPI.createProgress({
+              student_id: user.id,
+              course_id: course.id,
+              event_type: 'course_completed',
+              level: levelNumber,
+              data: {
+                all_quizzes_correct: true,
+                total_levels: levels.length,
+                completed_at: new Date().toISOString()
+              }
             })
           }
         }
@@ -393,6 +453,10 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
     const newResults = { ...showQuizResult }
     delete newResults[levelNumber]
     setShowQuizResult(newResults)
+
+    const newCorrectness = { ...quizCorrectness }
+    delete newCorrectness[levelNumber]
+    setQuizCorrectness(newCorrectness)
   }
 
   const toggleLevel = (levelNumber: number) => {
@@ -403,6 +467,11 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
       newExpanded.add(levelNumber)
     }
     setExpandedLevels(newExpanded)
+
+    // Save to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`expandedLevels_course_${course.id}`, JSON.stringify(Array.from(newExpanded)))
+    }
   }
 
   const totalXPPossible = levels.length * (STEPS_PER_LEVEL * XP_PER_STEP + XP_PER_QUIZ)
@@ -499,8 +568,8 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
                       </ul>
                     </div>
 
-                    {/* Quiz */}
-                    {shuffledQuiz && (
+                    {/* Quiz - Only show when all steps are completed */}
+                    {shuffledQuiz && allStepsComplete && (
                       <div className="bg-gradient-to-r from-teal-500 to-cyan-500 rounded-lg p-6 text-white">
                         <h4 className="text-2xl font-bold mb-4">🎯 Level {level.levelNumber} Challenge</h4>
                         <p className="text-lg mb-4">{level.quiz.question}</p>

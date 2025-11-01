@@ -4,10 +4,17 @@ export interface Course {
   id: number
   title: string
   description?: string
-  total_levels: number
+  total_levels?: number // Deprecated - use total_steps instead
+  total_steps: number // Total number of steps in the course
   url?: string
   display_order: number
   created_at: string
+  badge_name?: string
+  badge_icon?: string
+  badge_message?: string
+  isLocked?: boolean
+  prerequisiteCourseName?: string
+  requires_course?: number
 }
 
 const coursesAPI = {

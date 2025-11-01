@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import useAuthStore from '@/store/authStore'
 import { UserRole } from '@/types/user.types'
@@ -22,7 +22,26 @@ import { ROLE_COLORS } from '@/lib/theme'
 
 export default function HomePage() {
   const router = useRouter()
+
+  // Start with default value to avoid hydration mismatch
   const [activeTab, setActiveTab] = useState<'student' | 'teacher' | 'admin'>('student')
+
+  // Load saved tab from localStorage after hydration
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedTab = localStorage.getItem('loginTab')
+      if (savedTab === 'teacher' || savedTab === 'admin' || savedTab === 'student') {
+        setActiveTab(savedTab)
+      }
+    }
+  }, [])
+
+  // Save activeTab to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('loginTab', activeTab)
+    }
+  }, [activeTab])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-slate-50">
@@ -75,6 +94,7 @@ export default function HomePage() {
               {/* Role Tabs */}
               <div className="flex gap-2 mb-6">
                 <button
+                  type="button"
                   onClick={() => setActiveTab('student')}
                   className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
                     activeTab === 'student'
@@ -86,6 +106,7 @@ export default function HomePage() {
                   Student
                 </button>
                 <button
+                  type="button"
                   onClick={() => setActiveTab('teacher')}
                   className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
                     activeTab === 'teacher'
@@ -97,6 +118,7 @@ export default function HomePage() {
                   Teacher
                 </button>
                 <button
+                  type="button"
                   onClick={() => setActiveTab('admin')}
                   className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
                     activeTab === 'admin'
@@ -139,6 +161,10 @@ function StudentLoginForm() {
 
     try {
       await studentLogin(email, pin)
+      // Clear the saved tab on successful login
+      localStorage.removeItem('loginTab')
+      // Small delay to ensure cookies are set before redirect
+      await new Promise(resolve => setTimeout(resolve, 100))
       // Use window.location for hard redirect to ensure cookies are set
       window.location.href = '/student/dashboard'
     } catch (error: any) {
@@ -201,6 +227,10 @@ function StudentLoginForm() {
         <Rocket className="w-5 h-5" />
         {loading ? 'Logging in...' : 'Enter Academy'}
       </button>
+
+      <p className="text-center text-sm text-gray-500 mt-3">
+        Test account: student@test.com / PIN: 1234
+      </p>
     </form>
   )
 }
@@ -221,6 +251,10 @@ function TeacherLoginForm() {
 
     try {
       await login(email, password, UserRole.TEACHER)
+      // Clear the saved tab on successful login
+      localStorage.removeItem('loginTab')
+      // Small delay to ensure cookies are set before redirect
+      await new Promise(resolve => setTimeout(resolve, 100))
       // Use window.location for hard redirect to ensure cookies are set
       window.location.href = '/teacher/dashboard'
     } catch (error: any) {
@@ -279,7 +313,7 @@ function TeacherLoginForm() {
       </button>
 
       <p className="text-center text-sm text-gray-500">
-        Default: teacher@robloxacademy.com / password123
+        Default: teacher@robloxacademy.com / teacher123
       </p>
     </form>
   )
@@ -301,6 +335,10 @@ function AdminLoginForm() {
 
     try {
       await login(email, password, UserRole.ADMIN)
+      // Clear the saved tab on successful login
+      localStorage.removeItem('loginTab')
+      // Small delay to ensure cookies are set before redirect
+      await new Promise(resolve => setTimeout(resolve, 100))
       // Use window.location for hard redirect
       window.location.href = '/admin/dashboard'
     } catch (error: any) {
@@ -327,7 +365,7 @@ function AdminLoginForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#3CBB90] focus:border-transparent"
-          placeholder="admin@robloxacademy.com"
+          placeholder="admin@ecoblox.build"
           disabled={loading}
           required
         />
@@ -359,7 +397,7 @@ function AdminLoginForm() {
       </button>
 
       <p className="text-center text-sm text-gray-500">
-        Default: admin@robloxacademy.com / password123
+        Default: admin@ecoblox.build / admin123
       </p>
     </form>
   )

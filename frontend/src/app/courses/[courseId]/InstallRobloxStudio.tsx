@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Trophy, Download } from 'lucide-react'
 import useAuthStore from '@/store/authStore'
 import progressAPI from '@/lib/api/progress.api'
+import coursesAPI from '@/lib/api/courses.api'
 import CourseHeader from '@/components/courses/CourseHeader'
 import StepCheckbox from '@/components/courses/StepCheckbox'
 import ProgressBar from '@/components/courses/ProgressBar'
@@ -29,12 +30,13 @@ export default function InstallRobloxStudio({ course }: InstallRobloxStudioProps
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set())
   const [showCelebration, setShowCelebration] = useState(false)
   const [isSkipping, setIsSkipping] = useState(false)
+  const [earnedBadge, setEarnedBadge] = useState<any>(null)
 
   const steps = [
     {
       number: 1,
       title: 'Download Studio',
-      description: 'Click the download button below to get Roblox Studio installer'
+      description: 'Click the download button above to get Roblox Studio installer'
     },
     {
       number: 2,
@@ -117,8 +119,6 @@ export default function InstallRobloxStudio({ course }: InstallRobloxStudioProps
 
     // Check if all steps are completed
     if (newCompleted.size === steps.length) {
-      setShowCelebration(true)
-
       // Track quest and course completion
       if (user) {
         try {
@@ -131,18 +131,25 @@ export default function InstallRobloxStudio({ course }: InstallRobloxStudioProps
             data: { all_steps_completed: true }
           })
 
-          // Track course completion (for dashboard stats)
-          await progressAPI.createProgress({
+          // Track course completion (for dashboard stats) and get badge info
+          const result = await progressAPI.createProgress({
             student_id: user.id,
             course_id: course.id,
             event_type: 'course_completed',
             level: 1,
             data: { quest: 'install_roblox_studio' }
           })
+
+          // Store badge info if returned
+          if (result.badge) {
+            setEarnedBadge(result.badge)
+          }
         } catch (error) {
           console.error('Failed to track completion:', error)
         }
       }
+
+      setShowCelebration(true)
     }
   }
 
@@ -172,6 +179,24 @@ export default function InstallRobloxStudio({ course }: InstallRobloxStudioProps
         const allSteps = new Set(steps.map(s => s.number))
         setCompletedSteps(allSteps)
 
+        // Fetch badge info
+        try {
+          const progressResult = await progressAPI.getStudentProgress(user.id)
+          const badge = progressResult.badges?.find((b: any) => b.course_id === course.id)
+
+          if (badge) {
+            // Get course info to get badge details
+            const courseData = await coursesAPI.getCourse(course.id)
+            setEarnedBadge({
+              badge_name: courseData.badge_name,
+              badge_icon: courseData.badge_icon,
+              badge_message: courseData.badge_message,
+            })
+          }
+        } catch (error) {
+          console.error('Failed to fetch badge:', error)
+        }
+
         // Show celebration
         setShowCelebration(true)
       } else {
@@ -200,7 +225,23 @@ export default function InstallRobloxStudio({ course }: InstallRobloxStudioProps
             <button
               onClick={handleSkipCourse}
               disabled={isSkipping || completedSteps.size === steps.length}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              className="px-5 py-2.5 bg-white border-2 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                borderColor: ROLE_COLORS.student.primary,
+                color: ROLE_COLORS.student.primary,
+              }}
+              onMouseEnter={(e) => {
+                if (!isSkipping && completedSteps.size !== steps.length) {
+                  e.currentTarget.style.backgroundColor = ROLE_COLORS.student.primary
+                  e.currentTarget.style.color = 'white'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isSkipping && completedSteps.size !== steps.length) {
+                  e.currentTarget.style.backgroundColor = 'white'
+                  e.currentTarget.style.color = ROLE_COLORS.student.primary
+                }
+              }}
             >
               {isSkipping ? 'Processing...' : 'Already Installed?'}
             </button>
@@ -252,12 +293,32 @@ export default function InstallRobloxStudio({ course }: InstallRobloxStudioProps
         {showCelebration && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center">
-              <div className="mb-6">
-                <Trophy className="w-20 h-20 mx-auto" color={ROLE_COLORS.student.primary} />
-              </div>
-              <h2 className="text-3xl font-bold mb-4" style={{ color: ROLE_COLORS.student.primary }}>
-                Quest Complete! 🎉
-              </h2>
+              {/* Badge Display */}
+              {earnedBadge ? (
+                <div className="mb-6">
+                  <div className="text-6xl mb-4">{earnedBadge.badge_icon}</div>
+                  <h2 className="text-3xl font-bold mb-2" style={{ color: ROLE_COLORS.student.primary }}>
+                    {earnedBadge.badge_name}
+                  </h2>
+                  <p className="text-xl text-gray-700 font-medium mb-4">
+                    {earnedBadge.badge_message}
+                  </p>
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 rounded-full">
+                    <Trophy className="w-5 h-5" color={ROLE_COLORS.student.primary} />
+                    <span className="text-sm font-semibold" style={{ color: ROLE_COLORS.student.primary }}>
+                      Badge Earned!
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-6">
+                  <Trophy className="w-20 h-20 mx-auto" color={ROLE_COLORS.student.primary} />
+                  <h2 className="text-3xl font-bold mt-4" style={{ color: ROLE_COLORS.student.primary }}>
+                    Quest Complete! 🎉
+                  </h2>
+                </div>
+              )}
+
               <p className="text-gray-600 mb-6 text-lg">
                 Congratulations! You've successfully installed Roblox Studio.
                 Ready to start your creative journey?

@@ -1,24 +1,20 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { Student } from '../students/entities/student.entity';
+import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto, StudentPinLoginDto } from './dto/login.dto';
 import { UserRole } from '../common/enums/user-role.enum';
 
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectRepository(Student)
-    private studentsRepository: Repository<Student>,
+    private prisma: PrismaService,
     private jwtService: JwtService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
-    const user = await this.studentsRepository.findOne({
+    const user = await this.prisma.user.findUnique({
       where: { email },
-      select: ['id', 'name', 'email', 'password_hash', 'role', 'class_code'],
     });
 
     if (user && user.password_hash && (await bcrypt.compare(password, user.password_hash))) {
@@ -29,8 +25,12 @@ export class AuthService {
   }
 
   async validateStudentPin(email: string, pin: string): Promise<any> {
-    const student = await this.studentsRepository.findOne({
-      where: { email, pin_code: pin, role: UserRole.STUDENT },
+    const student = await this.prisma.user.findFirst({
+      where: {
+        email,
+        pin_code: pin,
+        role: UserRole.STUDENT
+      },
     });
 
     if (student) {
@@ -93,8 +93,9 @@ export class AuthService {
     };
 
     // Update last active
-    await this.studentsRepository.update(student.id, {
-      last_active: new Date(),
+    await this.prisma.user.update({
+      where: { id: student.id },
+      data: { last_active: new Date() },
     });
 
     return {
@@ -110,64 +111,32 @@ export class AuthService {
     };
   }
 
-  async generatePin(): Promise<string> {
-    const pin = Math.floor(1000 + Math.random() * 9000).toString();
-    const existingStudent = await this.studentsRepository.findOne({
-      where: { pin_code: pin },
-    });
-
-    if (existingStudent) {
-      return this.generatePin(); // Recursive call if PIN already exists
-    }
-
-    return pin;
-  }
-
   async setupPassword(token: string, password: string) {
-    // Find teacher with this invitation token
-    const teacher = await this.studentsRepository.findOne({
-      where: { invitation_token: token, role: UserRole.TEACHER },
+    const user = await this.prisma.user.findFirst({
+      where: {
+        invitation_token: token,
+        is_verified: false,
+      },
     });
 
-    if (!teacher) {
+    if (!user) {
       throw new UnauthorizedException('Invalid or expired invitation token');
     }
 
-    if (teacher.is_verified) {
-      throw new UnauthorizedException(
-        'This invitation has already been used',
-      );
-    }
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Hash the password
-    const password_hash = await bcrypt.hash(password, 10);
-
-    // Update teacher: set password, verify account, clear token
-    teacher.password_hash = password_hash;
-    teacher.is_verified = true;
-    teacher.invitation_token = '';
-    await this.studentsRepository.save(teacher);
-
-    // Return success with auto-login
-    const payload = {
-      sub: teacher.id,
-      email: teacher.email,
-      name: teacher.name,
-      role: teacher.role,
-      class_code: teacher.class_code,
-    };
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password_hash: hashedPassword,
+        is_verified: true,
+        invitation_token: null,
+      },
+    });
 
     return {
       success: true,
-      message: 'Password set successfully. You are now logged in.',
-      access_token: this.jwtService.sign(payload),
-      user: {
-        id: teacher.id,
-        name: teacher.name,
-        email: teacher.email,
-        role: teacher.role,
-        class_code: teacher.class_code,
-      },
+      message: 'Password set successfully. You can now login.',
     };
   }
 }

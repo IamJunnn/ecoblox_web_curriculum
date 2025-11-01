@@ -18,6 +18,7 @@ export interface StudentStats {
   steps_completed: number
   levels_unlocked: number
   courses_completed: number
+  badges_earned: number
 }
 
 export interface LeaderboardEntry {

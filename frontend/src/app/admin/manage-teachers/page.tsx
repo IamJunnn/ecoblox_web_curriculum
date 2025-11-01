@@ -2,11 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { BookOpen, Plus, Search, Mail, X, Send, Users, CheckCircle, Clock } from 'lucide-react'
 import { ROLE_COLORS } from '@/lib/theme'
+import useAuthStore from '@/store/authStore'
 import adminAPI, { type Teacher, type CreateTeacherDto } from '@/lib/api/admin.api'
 
 export default function ManageTeachers() {
+  const router = useRouter()
+  const { user, isAuthenticated, checkAuth } = useAuthStore()
   const [teachers, setTeachers] = useState<Teacher[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -19,19 +23,52 @@ export default function ManageTeachers() {
     class_code: '',
   })
 
-  // Fetch teachers on mount
+  // Check authentication on mount
   useEffect(() => {
-    fetchTeachers()
-  }, [])
+    checkAuth()
+  }, [checkAuth])
+
+  // Redirect if not authenticated or not admin
+  useEffect(() => {
+    if (!isAuthenticated) {
+      console.warn('User is not authenticated. Redirecting to home page.')
+      router.push('/')
+      return
+    }
+
+    if (user?.role !== 'admin') {
+      console.warn('User is not an admin. Redirecting to home page.')
+      alert('Access denied. Admin privileges required.')
+      router.push('/')
+      return
+    }
+  }, [isAuthenticated, user, router])
+
+  // Fetch teachers on mount (only if authenticated)
+  useEffect(() => {
+    if (isAuthenticated && user?.role === 'admin') {
+      fetchTeachers()
+    }
+  }, [isAuthenticated, user])
 
   const fetchTeachers = async () => {
     try {
       setLoading(true)
       const response = await adminAPI.getAllTeachers()
       setTeachers(response.teachers)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching teachers:', error)
-      alert('Failed to load teachers')
+
+      // Log detailed error info for debugging
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        config: error.config
+      })
+
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to load teachers'
+      alert(`Failed to load teacher data\n\nError: ${errorMessage}\n\nPlease check:\n1. You are logged in as admin\n2. Backend server is running\n3. Check browser console for details`)
     } finally {
       setLoading(false)
     }
@@ -226,7 +263,9 @@ export default function ManageTeachers() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="font-mono text-sm font-bold" style={{ color: ROLE_COLORS.teacher.primary }}>
-                        {teacher.class_code}
+                        {teacher.class_codes && teacher.class_codes.length > 0
+                          ? teacher.class_codes.map(cc => cc.code).join(', ')
+                          : 'N/A'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

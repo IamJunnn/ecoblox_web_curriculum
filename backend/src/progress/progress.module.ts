@@ -1,15 +1,12 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ProgressController } from './progress.controller';
 import { ProgressService } from './progress.service';
-import { ProgressEvent } from './entities/progress-event.entity';
-import { Student } from '../students/entities/student.entity';
-import { Course } from '../courses/entities/course.entity';
+import { ProgressController } from './progress.controller';
+import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ProgressEvent, Student, Course])],
-  controllers: [ProgressController],
+  imports: [PrismaModule],
   providers: [ProgressService],
-  exports: [TypeOrmModule, ProgressService]
+  controllers: [ProgressController],
+  exports: [ProgressService],
 })
 export class ProgressModule {}

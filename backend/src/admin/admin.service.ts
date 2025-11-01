@@ -1,152 +1,735 @@
-import {
-  Injectable,
-  NotFoundException,
-  ConflictException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Student } from '../students/entities/student.entity';
-import { UserRole } from '../common/enums/user-role.enum';
-import { CreateTeacherDto } from './dto/create-teacher.dto';
-import { UpdateTeacherDto } from './dto/update-teacher.dto';
-import { UpdateStudentDto } from './dto/update-student.dto';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
-import { ProgressEvent } from '../progress/entities/progress-event.entity';
-import * as crypto from 'crypto';
+import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 
 @Injectable()
 export class AdminService {
   constructor(
-    @InjectRepository(Student)
-    private studentRepository: Repository<Student>,
-    @InjectRepository(ProgressEvent)
-    private progressEventRepository: Repository<ProgressEvent>,
-    private emailService: EmailService,
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
   ) {}
 
-  /**
-   * Create a new teacher account
-   * Sends invitation email with token to set password
-   */
-  async createTeacher(createTeacherDto: CreateTeacherDto) {
+  // ============ STUDENT MANAGEMENT ============
+  async getAllStudents() {
+    const students = await this.prisma.user.findMany({
+      where: { role: 'student' },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        pin_code: true,
+        parent_email: true,
+        parent_name: true,
+        class_codes: true,
+        created_at: true,
+        last_active: true,
+        is_verified: true,
+        created_by_teacher_id: true,
+        progress_events: {
+          select: {
+            course_id: true,
+            event_type: true,
+            step_number: true,
+            timestamp: true,
+          },
+        },
+        badges: {
+          include: {
+            course: {
+              select: {
+                title: true,
+                badge_name: true,
+              },
+            },
+          },
+        },
+        game_enrollments: {
+          include: {
+            game: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { created_at: 'desc' },
+    });
+
+    // Get all courses for progress calculation
+    const allCourses = await this.prisma.course.findMany({
+      select: {
+        id: true,
+        total_steps: true,
+        game_id: true,
+      },
+    });
+
+    // Create a map of course_id -> total_steps
+    const courseStepsMap = new Map(allCourses.map(c => [c.id, c.total_steps]));
+
+    // Process each student
+    const processedStudents = await Promise.all(
+      students.map(async (student) => {
+        // Fetch teacher info if student was created by a teacher
+        let teacherName: string | null = null;
+        if (student.created_by_teacher_id) {
+          const teacher = await this.prisma.user.findUnique({
+            where: { id: student.created_by_teacher_id },
+            select: { name: true },
+          });
+          teacherName = teacher?.name || null;
+        }
+
+        // Calculate progress based on ALL enrolled courses (like student dashboard)
+        // Get all enrolled courses from game enrollments
+        const enrolledCourses = new Set<number>();
+        for (const enrollment of student.game_enrollments) {
+          // Add all courses from the enrolled game
+          const gameCourses = allCourses.filter(c => c.game_id === enrollment.game_id);
+          gameCourses.forEach(c => enrolledCourses.add(c.id));
+        }
+
+        // Count unique steps completed per course
+        const stepsByCourse = new Map<number, Set<number>>();
+        let totalStepsCompleted = 0;
+
+        for (const event of student.progress_events) {
+          if (event.event_type === 'step_checked' && event.step_number !== null) {
+            if (!stepsByCourse.has(event.course_id)) {
+              stepsByCourse.set(event.course_id, new Set());
+            }
+            stepsByCourse.get(event.course_id)!.add(event.step_number);
+          }
+        }
+
+        // Calculate total steps completed across all courses
+        for (const steps of stepsByCourse.values()) {
+          totalStepsCompleted += steps.size;
+        }
+
+        // Calculate progress based on completed courses (matches student dashboard)
+        let completedCoursesCount = 0;
+        const totalCoursesCount = enrolledCourses.size;
+
+        for (const courseId of enrolledCourses) {
+          const course = allCourses.find(c => c.id === courseId);
+          if (course && course.total_steps > 0) {
+            const stepsCompleted = stepsByCourse.get(courseId)?.size || 0;
+            // A course is completed if all steps are done
+            if (stepsCompleted >= course.total_steps) {
+              completedCoursesCount++;
+            }
+          }
+        }
+
+        const progress = totalCoursesCount > 0 ? Math.round((completedCoursesCount / totalCoursesCount) * 100) : 0;
+
+        // Calculate total XP (10 XP per step completed)
+        const totalXP = totalStepsCompleted * 10;
+
+        return {
+          id: student.id,
+          name: student.name,
+          email: student.email,
+          pin_code: student.pin_code,
+          class_codes: student.class_codes ? JSON.parse(student.class_codes) : [],
+          created_by_teacher_id: student.created_by_teacher_id,
+          teacher_name: teacherName,
+          progress,
+          totalXP,
+          badges: student.badges.length,
+          last_active: student.last_active ? student.last_active.toISOString() : null,
+          created_at: student.created_at.toISOString(),
+          badge_count: student.badges.length,
+          enrolled_games: student.game_enrollments.map(e => e.game),
+        };
+      })
+    );
+
+    return processedStudents;
+  }
+
+  async getStudentById(id: number) {
+    const student = await this.prisma.user.findFirst({
+      where: {
+        id,
+        role: 'student',
+      },
+      include: {
+        progress_events: {
+          include: {
+            course: true,
+          },
+          orderBy: { timestamp: 'desc' },
+        },
+        badges: {
+          include: {
+            course: true,
+          },
+        },
+        game_enrollments: {
+          include: {
+            game: {
+              include: {
+                courses: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException(`Student with ID ${id} not found`);
+    }
+
+    // Fetch teacher info if student was created by a teacher
+    let teacher: { id: number; name: string; email: string; classCode: string } | null = null;
+    if (student.created_by_teacher_id) {
+      const teacherData = await this.prisma.user.findUnique({
+        where: { id: student.created_by_teacher_id },
+        select: { id: true, name: true, email: true },
+      });
+      if (teacherData) {
+        // Get teacher's class code
+        const classCode = await this.prisma.classCode.findFirst({
+          where: { teacher_id: student.created_by_teacher_id },
+          select: { code: true },
+        });
+        teacher = {
+          id: teacherData.id,
+          name: teacherData.name,
+          email: teacherData.email,
+          classCode: classCode?.code || 'N/A',
+        };
+      }
+    }
+
+    // Calculate progress metrics
+    const allCourses = await this.prisma.course.findMany({
+      select: {
+        id: true,
+        title: true,
+        total_steps: true,
+        game_id: true,
+      },
+    });
+
+    // Build course progress map
+    const courseProgressMap = new Map();
+    const completedCourses = new Set();
+
+    for (const event of student.progress_events) {
+      if (!courseProgressMap.has(event.course_id)) {
+        courseProgressMap.set(event.course_id, {
+          courseId: event.course_id,
+          completedSteps: new Set(),
+          lastAccessed: event.timestamp,
+        });
+      }
+
+      const courseProgress = courseProgressMap.get(event.course_id);
+      if (event.event_type === 'step_checked' && event.step_number !== null) {
+        courseProgress.completedSteps.add(event.step_number);
+      }
+      if (event.event_type === 'course_completed') {
+        completedCourses.add(event.course_id);
+      }
+
+      // Update last accessed time
+      if (event.timestamp > courseProgress.lastAccessed) {
+        courseProgress.lastAccessed = event.timestamp;
+      }
+    }
+
+    // Get all enrolled courses from game enrollments
+    const enrolledCourseIds = new Set<number>();
+    for (const enrollment of student.game_enrollments) {
+      const gameCourses = allCourses.filter(c => c.game_id === enrollment.game_id);
+      gameCourses.forEach(c => enrolledCourseIds.add(c.id));
+    }
+
+    // Calculate overall progress based on completed courses (matches student dashboard)
+    let completedCoursesCount = 0;
+    const totalCoursesCount = enrolledCourseIds.size;
+    let totalStepsCompleted = 0;
+
+    for (const courseId of enrolledCourseIds) {
+      const course = allCourses.find(c => c.id === courseId);
+      if (course && course.total_steps > 0) {
+        const progress = courseProgressMap.get(courseId);
+        const stepsCompleted = progress?.completedSteps?.size || 0;
+        totalStepsCompleted += stepsCompleted;
+
+        // A course is completed if all steps are done
+        if (stepsCompleted >= course.total_steps) {
+          completedCoursesCount++;
+        }
+      }
+    }
+
+    const overallProgress = totalCoursesCount > 0 ? Math.round((completedCoursesCount / totalCoursesCount) * 100) : 0;
+
+    // Calculate total XP (10 XP per step completed)
+    const totalXP = totalStepsCompleted * 10;
+
+    // Build course progress array for response
+    const courseProgress = Array.from(courseProgressMap.entries()).map(([courseId, progress]) => {
+      const course = allCourses.find(c => c.id === courseId);
+      if (!course) return null;
+
+      const stepsCompleted = progress.completedSteps.size;
+      const courseProgress = Math.round((stepsCompleted / course.total_steps) * 100);
+      const courseXP = stepsCompleted * 10;
+
+      return {
+        courseId: course.id,
+        courseName: course.title,
+        completed: completedCourses.has(courseId),
+        progress: courseProgress,
+        xp: courseXP,
+        lastAccessed: progress.lastAccessed.toISOString(),
+      };
+    }).filter(cp => cp !== null);
+
+    // Get first class code if available
+    const classCodes = student.class_codes ? JSON.parse(student.class_codes) : [];
+    const classCode = classCodes.length > 0 ? classCodes[0] : 'N/A';
+
+    return {
+      success: true,
+      student: {
+        id: student.id,
+        name: student.name,
+        email: student.email,
+        pin: student.pin_code || 'N/A',
+        classCode,
+        teacher,
+        progress: overallProgress,
+        totalXP,
+        coursesCompleted: completedCourses.size,
+        totalCourses: enrolledCourseIds.size,
+        badgesEarned: student.badges.length,
+        lastActive: student.last_active ? student.last_active.toISOString() : new Date().toISOString(),
+        createdAt: student.created_at.toISOString(),
+      },
+      courseProgress,
+    };
+  }
+
+  async createStudent(createStudentDto: any) {
+    const { email, name, password, pin_code, parent_email, parent_name, class_codes, teacher_id, game_id } = createStudentDto;
+
     // Check if email already exists
-    const existingUser = await this.studentRepository.findOne({
-      where: { email: createTeacherDto.email },
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email },
     });
 
     if (existingUser) {
-      throw new ConflictException('Email already exists');
+      throw new BadRequestException('Email already registered');
     }
 
-    // Generate invitation token
-    const invitationToken = crypto.randomBytes(32).toString('hex');
+    // Generate PIN if not provided (4-digit random number)
+    const finalPinCode = pin_code || Math.floor(1000 + Math.random() * 9000).toString();
 
-    // Create teacher (unverified, no password yet)
-    const teacher = this.studentRepository.create({
-      name: createTeacherDto.name,
-      email: createTeacherDto.email,
-      class_code: createTeacherDto.class_code || this.generateClassCode(),
-      role: UserRole.TEACHER,
-      is_verified: false,
-      invitation_token: invitationToken,
+    // Hash password if provided
+    let password_hash: string | null = null;
+    if (password) {
+      password_hash = await bcrypt.hash(password, 10);
+    }
+
+    // Create student
+    const student = await this.prisma.user.create({
+      data: {
+        email,
+        name,
+        password_hash,
+        pin_code: finalPinCode,
+        role: 'student',
+        parent_email,
+        parent_name,
+        class_codes: class_codes ? JSON.stringify(class_codes) : null,
+        created_by_teacher_id: teacher_id,
+        is_verified: true, // Auto-verify admin-created accounts
+      },
     });
 
-    const savedTeacher = await this.studentRepository.save(teacher);
+    // Process class codes and create game enrollments
+    if (class_codes && Array.isArray(class_codes)) {
+      for (const code of class_codes) {
+        const classCode = await this.prisma.classCode.findUnique({
+          where: { code },
+        });
 
-    // Send invitation email
-    const invitationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/setup-password?token=${invitationToken}`;
-    await this.emailService.sendTeacherInvitation(
-      savedTeacher.email,
-      savedTeacher.name,
-      invitationLink,
-    );
+        if (classCode) {
+          await this.prisma.gameEnrollment.create({
+            data: {
+              user_id: student.id,
+              game_id: classCode.game_id,
+              class_code: code,
+              unlocked_by: teacher_id,
+            },
+          });
+        }
+      }
+    }
 
+    // Create game enrollment if game_id is provided
+    if (game_id) {
+      // Check if game exists
+      const game = await this.prisma.game.findUnique({
+        where: { id: game_id },
+      });
+
+      if (game) {
+        // Generate a generic class code for admin-created enrollments
+        const genericClassCode = `ADMIN-${student.id}-${game_id}`;
+
+        // Check if enrollment already exists (in case class_codes also enrolled this game)
+        const existingEnrollment = await this.prisma.gameEnrollment.findUnique({
+          where: {
+            user_id_game_id: {
+              user_id: student.id,
+              game_id: game_id,
+            },
+          },
+        });
+
+        if (!existingEnrollment) {
+          await this.prisma.gameEnrollment.create({
+            data: {
+              user_id: student.id,
+              game_id: game_id,
+              class_code: genericClassCode,
+              unlocked_by: teacher_id,
+            },
+          });
+        }
+      }
+    }
+
+    // Send welcome email to student with their login credentials
+    let emailSent = false;
+    try {
+      await this.emailService.sendStudentWelcome(
+        student.email,
+        student.name,
+        finalPinCode,
+      );
+      console.log(`✅ Welcome email sent to student: ${student.email}`);
+      emailSent = true;
+    } catch (emailError) {
+      // Log error but don't fail student creation
+      console.error('❌ Failed to send welcome email to student:', emailError);
+      // The student is still created successfully, just the email failed
+    }
+
+    // Return formatted response with all important info
     return {
       success: true,
-      teacher: {
-        id: savedTeacher.id,
-        name: savedTeacher.name,
-        email: savedTeacher.email,
-        class_code: savedTeacher.class_code,
-        role: savedTeacher.role,
-        is_verified: savedTeacher.is_verified,
+      student: {
+        id: student.id,
+        name: student.name,
+        email: student.email,
+        pin: finalPinCode,
+        createdAt: student.created_at.toISOString(),
       },
-      invitation_token: invitationToken, // Temporary - remove in production
-      invitation_link: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/setup-password?token=${invitationToken}`,
+      emailSent,
+      message: emailSent
+        ? `Student created successfully. Welcome email sent to ${student.email}`
+        : `Student created successfully. Failed to send email - please manually provide credentials to student.`,
     };
   }
 
-  /**
-   * Get all teachers
-   */
-  async getAllTeachers() {
-    const teachers = await this.studentRepository.find({
-      where: { role: UserRole.TEACHER },
-      select: [
-        'id',
-        'name',
-        'email',
-        'class_code',
-        'is_verified',
-        'created_at',
-        'last_active',
-      ],
-      order: { created_at: 'DESC' },
+  async updateStudent(id: number, updateStudentDto: any) {
+    const { email, name, password, pin_code, parent_email, parent_name, class_codes, game_id, teacher_id } = updateStudentDto;
+
+    // Check if student exists
+    const student = await this.prisma.user.findFirst({
+      where: {
+        id,
+        role: 'student',
+      },
     });
 
-    // Get student count for each teacher
-    const teachersWithStudentCount = await Promise.all(
+    if (!student) {
+      throw new NotFoundException(`Student with ID ${id} not found`);
+    }
+
+    // Prepare update data
+    const updateData: any = {
+      email,
+      name,
+      pin_code,
+      parent_email,
+      parent_name,
+      class_codes: class_codes ? JSON.stringify(class_codes) : student.class_codes,
+    };
+
+    // Update teacher assignment if provided
+    if (teacher_id !== undefined) {
+      updateData.created_by_teacher_id = teacher_id || null;
+    }
+
+    // Hash new password if provided
+    if (password) {
+      updateData.password_hash = await bcrypt.hash(password, 10);
+    }
+
+    // Update student
+    const updatedStudent = await this.prisma.user.update({
+      where: { id },
+      data: updateData,
+    });
+
+    // Handle game enrollment update if game_id is provided
+    if (game_id !== undefined && game_id !== null) {
+      // Get existing enrollments
+      const existingEnrollments = await this.prisma.gameEnrollment.findMany({
+        where: { user_id: id },
+      });
+
+      // Check if student is already enrolled in this game
+      const alreadyEnrolled = existingEnrollments.some(e => e.game_id === game_id);
+
+      if (!alreadyEnrolled) {
+        // Remove old enrollments (keep it simple: one game at a time for now)
+        await this.prisma.gameEnrollment.deleteMany({
+          where: { user_id: id },
+        });
+
+        // Create new enrollment with a default class code based on game
+        const game = await this.prisma.game.findUnique({
+          where: { id: game_id },
+          select: { name: true },
+        });
+
+        const classCode = `GAME${game_id}-${Date.now()}`;
+
+        await this.prisma.gameEnrollment.create({
+          data: {
+            user_id: id,
+            game_id: game_id,
+            class_code: classCode,
+            unlocked_by: teacher_id || student.created_by_teacher_id,
+          },
+        });
+      }
+    }
+
+    // Update game enrollments if class codes changed (legacy support)
+    if (class_codes && Array.isArray(class_codes)) {
+      // Remove old enrollments
+      await this.prisma.gameEnrollment.deleteMany({
+        where: { user_id: id },
+      });
+
+      // Add new enrollments
+      for (const code of class_codes) {
+        const classCode = await this.prisma.classCode.findUnique({
+          where: { code },
+        });
+
+        if (classCode) {
+          await this.prisma.gameEnrollment.create({
+            data: {
+              user_id: id,
+              game_id: classCode.game_id,
+              class_code: code,
+            },
+          });
+        }
+      }
+    }
+
+    return updatedStudent;
+  }
+
+  async deleteStudent(id: number) {
+    const student = await this.prisma.user.findFirst({
+      where: {
+        id,
+        role: 'student',
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException(`Student with ID ${id} not found`);
+    }
+
+    // Delete related records in a transaction
+    await this.prisma.$transaction(async (prisma) => {
+      // Delete game enrollments
+      await prisma.gameEnrollment.deleteMany({
+        where: { user_id: id },
+      });
+
+      // Delete progress events (has cascade but being explicit)
+      await prisma.progressEvent.deleteMany({
+        where: { user_id: id },
+      });
+
+      // Delete badges (has cascade but being explicit)
+      await prisma.studentBadge.deleteMany({
+        where: { user_id: id },
+      });
+
+      // Finally delete the user
+      await prisma.user.delete({
+        where: { id },
+      });
+    });
+
+    return { message: 'Student deleted successfully' };
+  }
+
+  // ============ TEACHER MANAGEMENT ============
+  async getAllTeachers() {
+    const teachers = await this.prisma.user.findMany({
+      where: { role: 'teacher' },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        created_at: true,
+        last_active: true,
+        is_verified: true,
+      },
+      orderBy: { created_at: 'desc' },
+    });
+
+    // Get class codes and student counts for each teacher
+    const teachersWithStats = await Promise.all(
       teachers.map(async (teacher) => {
-        const studentCount = teacher.class_code
-          ? await this.studentRepository.count({
-              where: {
-                class_code: teacher.class_code,
-                role: UserRole.STUDENT,
+        const classCodes = await this.prisma.classCode.findMany({
+          where: { teacher_id: teacher.id },
+          include: {
+            game: {
+              select: {
+                name: true,
               },
-            })
-          : 0;
+            },
+          },
+        });
+
+        const studentCount = await this.prisma.user.count({
+          where: {
+            role: 'student',
+            created_by_teacher_id: teacher.id,
+          },
+        });
 
         return {
           ...teacher,
+          class_codes: classCodes,
           student_count: studentCount,
         };
-      }),
+      })
     );
 
-    return {
-      success: true,
-      teachers: teachersWithStudentCount,
-      count: teachers.length,
-    };
+    return teachersWithStats;
   }
 
-  /**
-   * Get teacher by ID with their students
-   */
   async getTeacherById(id: number) {
-    const teacher = await this.studentRepository.findOne({
-      where: { id, role: UserRole.TEACHER },
+    const teacher = await this.prisma.user.findFirst({
+      where: {
+        id,
+        role: 'teacher',
+      },
     });
 
     if (!teacher) {
-      throw new NotFoundException('Teacher not found');
+      throw new NotFoundException(`Teacher with ID ${id} not found`);
     }
 
-    // Get students created by this teacher
-    const students = await this.studentRepository.find({
-      where: {
-        created_by_teacher_id: id,
-        role: UserRole.STUDENT,
+    // Get class codes
+    const classCodes = await this.prisma.classCode.findMany({
+      where: { teacher_id: id },
+      include: {
+        game: true,
       },
-      select: [
-        'id',
-        'name',
-        'email',
-        'class_code',
-        'created_at',
-        'last_active',
-      ],
     });
+
+    // Get students created by this teacher
+    const students = await this.prisma.user.findMany({
+      where: {
+        role: 'student',
+        created_by_teacher_id: id,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        created_at: true,
+      },
+    });
+
+    return {
+      ...teacher,
+      class_codes: classCodes,
+      students,
+    };
+  }
+
+  async createTeacher(createTeacherDto: any) {
+    const { email, name, class_code } = createTeacherDto;
+
+    // Check if email already exists
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      throw new BadRequestException('Email already registered');
+    }
+
+    // Generate an invitation token for the teacher to set their own password
+    const invitationToken = randomBytes(32).toString('hex');
+
+    // Create teacher without password (they'll set it up via invitation link)
+    const teacher = await this.prisma.user.create({
+      data: {
+        email,
+        name,
+        role: 'teacher',
+        invitation_token: invitationToken,
+        is_verified: false, // Will be verified when they set up password
+      },
+    });
+
+    // If class_code is provided, create it
+    if (class_code) {
+      // Get the first game (or you could make this configurable)
+      const game = await this.prisma.game.findFirst({
+        orderBy: { id: 'asc' },
+      });
+
+      if (game) {
+        await this.prisma.classCode.create({
+          data: {
+            code: class_code,
+            teacher_id: teacher.id,
+            teacher_name: teacher.name,
+            game_id: game.id,
+          },
+        });
+      }
+    }
+
+    // Create invitation link
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const invitationLink = `${baseUrl}/auth/setup-password?token=${invitationToken}`;
+
+    // Send invitation email
+    await this.emailService.sendTeacherInvitation(
+      teacher.email,
+      teacher.name,
+      invitationLink,
+    );
 
     return {
       success: true,
@@ -154,658 +737,190 @@ export class AdminService {
         id: teacher.id,
         name: teacher.name,
         email: teacher.email,
-        class_code: teacher.class_code,
+        class_code: class_code || null,
+        role: teacher.role,
         is_verified: teacher.is_verified,
-        created_at: teacher.created_at,
-        last_active: teacher.last_active,
       },
-      students,
-      student_count: students.length,
+      invitation_token: invitationToken,
+      invitation_link: invitationLink,
     };
   }
 
-  /**
-   * Update teacher information
-   */
-  async updateTeacher(id: number, updateTeacherDto: UpdateTeacherDto) {
-    const teacher = await this.studentRepository.findOne({
-      where: { id, role: UserRole.TEACHER },
+  async updateTeacher(id: number, updateTeacherDto: any) {
+    const { email, name, password } = updateTeacherDto;
+
+    // Check if teacher exists
+    const teacher = await this.prisma.user.findFirst({
+      where: {
+        id,
+        role: 'teacher',
+      },
     });
 
     if (!teacher) {
-      throw new NotFoundException('Teacher not found');
+      throw new NotFoundException(`Teacher with ID ${id} not found`);
     }
 
-    // Check if email is being changed and if it already exists
-    if (updateTeacherDto.email && updateTeacherDto.email !== teacher.email) {
-      const existingUser = await this.studentRepository.findOne({
-        where: { email: updateTeacherDto.email },
-      });
+    // Prepare update data
+    const updateData: any = {
+      email,
+      name,
+    };
 
-      if (existingUser) {
-        throw new ConflictException('Email already exists');
-      }
+    // Hash new password if provided
+    if (password) {
+      updateData.password_hash = await bcrypt.hash(password, 10);
     }
 
     // Update teacher
-    Object.assign(teacher, updateTeacherDto);
-    const updatedTeacher = await this.studentRepository.save(teacher);
+    const updatedTeacher = await this.prisma.user.update({
+      where: { id },
+      data: updateData,
+    });
 
-    return {
-      success: true,
-      teacher: {
-        id: updatedTeacher.id,
-        name: updatedTeacher.name,
-        email: updatedTeacher.email,
-        class_code: updatedTeacher.class_code,
-      },
-    };
+    return updatedTeacher;
   }
 
-  /**
-   * Delete teacher
-   */
   async deleteTeacher(id: number) {
-    const teacher = await this.studentRepository.findOne({
-      where: { id, role: UserRole.TEACHER },
+    const teacher = await this.prisma.user.findFirst({
+      where: {
+        id,
+        role: 'teacher',
+      },
     });
 
     if (!teacher) {
-      throw new NotFoundException('Teacher not found');
+      throw new NotFoundException(`Teacher with ID ${id} not found`);
     }
 
-    // Check if teacher has students
-    const studentCount = await this.studentRepository.count({
+    // Check if teacher has any students
+    const studentsCount = await this.prisma.user.count({
       where: {
-        created_by_teacher_id: id,
-        role: UserRole.STUDENT,
+        created_by_teacher_id: id
       },
     });
 
-    if (studentCount > 0) {
-      throw new ConflictException(
-        `Cannot delete teacher with ${studentCount} active students`,
-      );
+    if (studentsCount > 0) {
+      throw new BadRequestException(`Cannot delete teacher with ${studentsCount} active students. Please reassign or delete the students first.`);
     }
 
-    // Delete any progress events associated with this teacher ID
-    // (in case they were previously a student or have test data)
-    await this.progressEventRepository.delete({ student_id: id });
+    // Delete teacher and related data in a transaction
+    await this.prisma.$transaction(async (prisma) => {
+      // Delete class codes associated with this teacher
+      await prisma.classCode.deleteMany({
+        where: { teacher_id: id },
+      });
 
-    await this.studentRepository.remove(teacher);
+      // Delete the teacher user
+      await prisma.user.delete({
+        where: { id },
+      });
+    });
 
-    return {
-      success: true,
-      message: 'Teacher deleted successfully',
-    };
+    return { message: 'Teacher deleted successfully' };
   }
 
-  /**
-   * Get system statistics
-   */
-  async getSystemStats() {
-    const [teacherCount, studentCount, adminCount] = await Promise.all([
-      this.studentRepository.count({ where: { role: UserRole.TEACHER } }),
-      this.studentRepository.count({ where: { role: UserRole.STUDENT } }),
-      this.studentRepository.count({ where: { role: UserRole.ADMIN } }),
+  // ============ STATISTICS ============
+  async getAdminStats() {
+    const [
+      totalStudents,
+      totalTeachers,
+      totalGames,
+      totalCourses,
+      totalBadges,
+      recentActivity,
+    ] = await Promise.all([
+      this.prisma.user.count({ where: { role: 'student' } }),
+      this.prisma.user.count({ where: { role: 'teacher' } }),
+      this.prisma.game.count(),
+      this.prisma.course.count(),
+      this.prisma.studentBadge.count(),
+      this.prisma.progressEvent.findMany({
+        take: 10,
+        orderBy: { timestamp: 'desc' },
+        include: {
+          user: {
+            select: {
+              name: true,
+            },
+          },
+          course: {
+            select: {
+              title: true,
+            },
+          },
+        },
+      }),
     ]);
 
-    // Get verified vs unverified teachers
-    const verifiedTeachers = await this.studentRepository.count({
-      where: { role: UserRole.TEACHER, is_verified: true },
-    });
-
     return {
-      success: true,
-      stats: {
-        total_teachers: teacherCount,
-        verified_teachers: verifiedTeachers,
-        pending_teachers: teacherCount - verifiedTeachers,
-        total_students: studentCount,
-        total_admins: adminCount,
+      totalStudents,
+      totalTeachers,
+      totalGames,
+      totalCourses,
+      totalBadges,
+      recentActivity: recentActivity.map(event => ({
+        student_name: event.user.name,
+        course_title: event.course.title,
+        event_type: event.event_type,
+        timestamp: event.timestamp,
+      })),
+    };
+  }
+
+  // ============ GAME MANAGEMENT ============
+  async getAllGames() {
+    const games = await this.prisma.game.findMany({
+      include: {
+        courses: {
+          orderBy: { course_order: 'asc' },
+        },
+        enrollments: true,
       },
-    };
-  }
-
-  /**
-   * Create a new student (Admin version - can assign to any teacher)
-   */
-  async createStudent(createStudentDto: {
-    name: string;
-    email: string;
-    pin_code?: string;
-    teacher_id?: number;
-  }) {
-    // Check if email already exists
-    const existingUser = await this.studentRepository.findOne({
-      where: { email: createStudentDto.email },
+      orderBy: { display_order: 'asc' },
     });
 
-    if (existingUser) {
-      throw new ConflictException('Email already exists');
-    }
+    return games.map(game => ({
+      ...game,
+      total_courses: game.courses.length,
+      total_students: game.enrollments.length,
+    }));
+  }
 
-    // Generate PIN if not provided
-    let pinCode = createStudentDto.pin_code;
-    if (!pinCode) {
-      pinCode = await this.generateUniquePin();
-    } else {
-      // Check if provided PIN already exists
-      const existingPin = await this.studentRepository.findOne({
-        where: { pin_code: pinCode },
-      });
-      if (existingPin) {
-        throw new ConflictException('PIN code already exists');
-      }
-    }
-
-    // Get teacher if specified
-    let classCode = 'UNASSIGNED';
-    if (createStudentDto.teacher_id) {
-      const teacher = await this.studentRepository.findOne({
-        where: { id: createStudentDto.teacher_id, role: UserRole.TEACHER },
-      });
-
-      if (!teacher) {
-        throw new NotFoundException('Teacher not found');
-      }
-
-      classCode = teacher.class_code || 'UNASSIGNED';
-    }
-
-    // Create student
-    const studentData: Partial<Student> = {
-      name: createStudentDto.name,
-      email: createStudentDto.email,
-      pin_code: pinCode,
-      class_code: classCode,
-      role: UserRole.STUDENT,
-      is_verified: true,
-    };
-
-    // Only set teacher_id if provided
-    if (createStudentDto.teacher_id) {
-      studentData.created_by_teacher_id = createStudentDto.teacher_id;
-    }
-
-    const student: Student = this.studentRepository.create(studentData);
-    const savedStudent: Student = await this.studentRepository.save(student);
-
-    // Send welcome email to the student with their login credentials
-    try {
-      if (savedStudent.pin_code) {
-        await this.emailService.sendStudentWelcome(
-          savedStudent.email,
-          savedStudent.name,
-          savedStudent.pin_code,
-        );
-      }
-    } catch (error) {
-      // Log error but don't fail the student creation
-      console.error('Failed to send welcome email:', error);
-    }
-
-    return {
-      success: true,
-      student: {
-        id: savedStudent.id,
-        name: savedStudent.name,
-        email: savedStudent.email,
-        pin: savedStudent.pin_code,
-        classCode: savedStudent.class_code,
-        createdAt: savedStudent.created_at,
+  async getStudentsByGame(gameId: number) {
+    const enrollments = await this.prisma.gameEnrollment.findMany({
+      where: { game_id: gameId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            badges: {
+              where: {
+                course: {
+                  game_id: gameId,
+                },
+              },
+            },
+            progress_events: {
+              where: {
+                course: {
+                  game_id: gameId,
+                },
+              },
+            },
+          },
+        },
       },
-    };
-  }
-
-  /**
-   * Get all students
-   */
-  async getAllStudents() {
-    // Get all students with their progress events
-    const students = await this.studentRepository
-      .createQueryBuilder('student')
-      .leftJoinAndSelect('student.progressEvents', 'progress')
-      .leftJoinAndSelect('progress.course', 'course')
-      .where('student.role = :role', { role: UserRole.STUDENT })
-      .orderBy('student.created_at', 'DESC')
-      .getMany();
-
-    // Get all teachers for mapping
-    const teachers = await this.studentRepository.find({
-      where: { role: UserRole.TEACHER },
-      select: ['id', 'name', 'email', 'class_code'],
     });
 
-    const teacherMap = new Map(teachers.map((t) => [t.id, t]));
-
-    // Calculate stats for each student
-    const studentsWithStats = students.map((student) => {
-      const progressEvents = student.progressEvents || [];
-
-      // Calculate total XP - XP is calculated based on event types, not stored in data
-      // 20 XP per step, 100 XP per correct quiz (matching progress service calculation)
-      let totalXP = 0;
-      progressEvents.forEach((event) => {
-        if (event.event_type === 'step_checked') {
-          totalXP += 20;
-        } else if (event.event_type === 'quiz_answered') {
-          const data = event.data ? JSON.parse(event.data) : {};
-          if (data.correct) {
-            totalXP += 100;
-          }
-        }
-      });
-
-      // Calculate badges (quest completions)
-      const badges = progressEvents.filter(
-        (event) => event.event_type === 'quest_completed',
-      ).length;
-
-      // Calculate progress based on step_checked events (matching student dashboard logic)
-      // Course 1 (Studio Basics): 4 steps per level × 6 levels = 24 total steps
-      // Course 4 (Install Roblox Studio): 5 steps total
-      const totalSteps = 29; // 24 + 5
-
-      // Count unique steps completed across all courses
-      const completedStepsSet = new Set<string>();
-      progressEvents
-        .filter((event) => event.event_type === 'step_checked')
-        .forEach((event) => {
-          const data = event.data ? JSON.parse(event.data) : {};
-          const stepKey = `${event.course_id}-${event.level}-${data.step}`;
-          completedStepsSet.add(stepKey);
-        });
-
-      const completedSteps = completedStepsSet.size;
-
-      // Calculate progress percentage based on completed steps
-      const progress =
-        totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
-
-      // Calculate courses completed (a course is complete when all its steps are done)
-      const courseStepCounts = new Map<number, Set<string>>();
-      progressEvents
-        .filter((event) => event.event_type === 'step_checked')
-        .forEach((event) => {
-          if (!courseStepCounts.has(event.course_id)) {
-            courseStepCounts.set(event.course_id, new Set());
-          }
-          const data = event.data ? JSON.parse(event.data) : {};
-          const stepKey = `${event.level}-${data.step}`;
-          courseStepCounts.get(event.course_id)!.add(stepKey);
-        });
-
-      const courseTotalSteps = new Map([
-        [1, 24], // 4 steps × 6 levels
-        [4, 5], // 5 steps
-      ]);
-
-      let coursesCompleted = 0;
-      courseStepCounts.forEach((steps, courseId) => {
-        const totalStepsInCourse = courseTotalSteps.get(courseId) || 24;
-        if (steps.size >= totalStepsInCourse) {
-          coursesCompleted++;
-        }
-      });
-
-      // Get teacher info
-      const teacher = student.created_by_teacher_id
-        ? teacherMap.get(student.created_by_teacher_id)
-        : null;
-
-      return {
-        id: student.id,
-        name: student.name,
-        email: student.email,
-        pin_code: student.pin_code,
-        class_code: student.class_code,
-        created_by_teacher_id: student.created_by_teacher_id,
-        teacher_name: teacher ? teacher.name : null,
-        progress,
-        totalXP,
-        badges,
-        last_active: student.last_active,
-        created_at: student.created_at,
-      };
-    });
-
-    return {
-      success: true,
-      students: studentsWithStats,
-      count: studentsWithStats.length,
-    };
-  }
-
-  /**
-   * Get student by ID with detailed information
-   */
-  async getStudentById(id: number) {
-    const student = await this.studentRepository.findOne({
-      where: { id, role: UserRole.STUDENT },
-    });
-
-    if (!student) {
-      throw new NotFoundException('Student not found');
-    }
-
-    // Get teacher information
-    let teacher: Student | null = null;
-    if (student.created_by_teacher_id) {
-      teacher = await this.studentRepository.findOne({
-        where: { id: student.created_by_teacher_id, role: UserRole.TEACHER },
-        select: ['id', 'name', 'email', 'class_code'],
-      });
-    }
-
-    // Get progress statistics
-    const progressEvents = await this.progressEventRepository.find({
-      where: { student_id: id },
-      relations: ['course'],
-    });
-
-    // Calculate statistics - XP is calculated based on event types, not stored in data
-    // 20 XP per step, 100 XP per correct quiz (matching progress service calculation)
-    let totalXP = 0;
-    progressEvents.forEach((event) => {
-      if (event.event_type === 'step_checked') {
-        totalXP += 20;
-      } else if (event.event_type === 'quiz_answered') {
-        const data = event.data ? JSON.parse(event.data) : {};
-        if (data.correct) {
-          totalXP += 100;
-        }
-      }
-    });
-
-    const badgesEarned = progressEvents.filter(
-      (event) => event.event_type === 'quest_completed',
-    ).length;
-
-    // Calculate progress based on step_checked events (matching student dashboard logic)
-    // Course 1 (Studio Basics): 4 steps per level × 6 levels = 24 total steps
-    // Course 4 (Install Roblox Studio): 5 steps total
-    const totalSteps = 29; // 24 + 5
-
-    // Count unique steps completed across all courses
-    const completedStepsSet = new Set<string>();
-    progressEvents
-      .filter((event) => event.event_type === 'step_checked')
-      .forEach((event) => {
-        const data = event.data ? JSON.parse(event.data) : {};
-        const stepKey = `${event.course_id}-${event.level}-${data.step}`;
-        completedStepsSet.add(stepKey);
-      });
-
-    const completedSteps = completedStepsSet.size;
-    const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
-
-    // Calculate courses completed (a course is complete when all its steps are done)
-    const courseStepCounts = new Map<number, Set<string>>();
-    progressEvents
-      .filter((event) => event.event_type === 'step_checked')
-      .forEach((event) => {
-        if (!courseStepCounts.has(event.course_id)) {
-          courseStepCounts.set(event.course_id, new Set());
-        }
-        const data = event.data ? JSON.parse(event.data) : {};
-        const stepKey = `${event.level}-${data.step}`;
-        courseStepCounts.get(event.course_id)!.add(stepKey);
-      });
-
-    const courseTotalSteps = new Map([
-      [1, 24], // 4 steps × 6 levels
-      [4, 5], // 5 steps
-    ]);
-
-    let coursesCompleted = 0;
-    courseStepCounts.forEach((steps, courseId) => {
-      const totalStepsInCourse = courseTotalSteps.get(courseId) || 24;
-      if (steps.size >= totalStepsInCourse) {
-        coursesCompleted++;
-      }
-    });
-
-    const totalCourses = 2;
-
-    // Get course-specific progress
-    const courseProgressMap = new Map();
-    progressEvents.forEach((event) => {
-      const courseId = event.course_id;
-      if (!courseProgressMap.has(courseId)) {
-        courseProgressMap.set(courseId, {
-          courseId,
-          courseName: event.course?.title || 'Unknown Course',
-          completed: false,
-          progress: 0,
-          xp: 0,
-          lastAccessed: event.timestamp,
-        });
-      }
-      const courseData = courseProgressMap.get(courseId);
-
-      // Calculate XP based on event type (matching progress service)
-      if (event.event_type === 'step_checked') {
-        courseData.xp += 20;
-      } else if (event.event_type === 'quiz_answered') {
-        const eventData = event.data ? JSON.parse(event.data) : {};
-        if (eventData.correct) {
-          courseData.xp += 100;
-        }
-      }
-
-      if (event.timestamp > courseData.lastAccessed) {
-        courseData.lastAccessed = event.timestamp;
-      }
-    });
-
-    // Calculate progress percentage for each course based on step completion
-    courseProgressMap.forEach((courseData, courseId) => {
-      const stepsInCourse = courseStepCounts.get(courseId);
-      const completedStepsInCourse = stepsInCourse ? stepsInCourse.size : 0;
-      const totalStepsInCourse = courseTotalSteps.get(courseId) || 24;
-
-      // Progress percentage = (completed steps / total steps) * 100
-      courseData.progress = totalStepsInCourse > 0
-        ? Math.round((completedStepsInCourse / totalStepsInCourse) * 100)
-        : 0;
-
-      // Mark as completed if all steps done
-      if (completedStepsInCourse >= totalStepsInCourse) {
-        courseData.completed = true;
-      }
-    });
-
-    return {
-      success: true,
-      student: {
-        id: student.id,
-        name: student.name,
-        email: student.email,
-        pin: student.pin_code,
-        classCode: student.class_code,
-        progress,
-        totalXP,
-        coursesCompleted,
-        totalCourses,
-        badgesEarned,
-        lastActive: student.last_active,
-        createdAt: student.created_at,
-        teacher: teacher
-          ? {
-              id: teacher.id,
-              name: teacher.name,
-              email: teacher.email,
-              classCode: teacher.class_code,
-            }
-          : null,
-      },
-      courseProgress: Array.from(courseProgressMap.values()),
-    };
-  }
-
-  /**
-   * Update student information
-   */
-  async updateStudent(id: number, updateStudentDto: UpdateStudentDto) {
-    const student = await this.studentRepository.findOne({
-      where: { id, role: UserRole.STUDENT },
-    });
-
-    if (!student) {
-      throw new NotFoundException('Student not found');
-    }
-
-    // Check if email is being changed and if it already exists
-    if (updateStudentDto.email && updateStudentDto.email !== student.email) {
-      const existingUser = await this.studentRepository.findOne({
-        where: { email: updateStudentDto.email },
-      });
-
-      if (existingUser) {
-        throw new ConflictException('Email already exists');
-      }
-    }
-
-    // Update student
-    if (updateStudentDto.name) student.name = updateStudentDto.name;
-    if (updateStudentDto.email) student.email = updateStudentDto.email;
-    if (updateStudentDto.pin_code) student.pin_code = updateStudentDto.pin_code;
-
-    // Update teacher assignment if provided
-    if (updateStudentDto.teacher_id !== undefined) {
-      if (updateStudentDto.teacher_id === null || updateStudentDto.teacher_id === 0) {
-        // Unassign teacher
-        student.created_by_teacher_id = undefined;
-        student.class_code = 'UNASSIGNED';
-      } else {
-        // Verify teacher exists and get their class code
-        const teacher = await this.studentRepository.findOne({
-          where: { id: updateStudentDto.teacher_id, role: UserRole.TEACHER },
-        });
-
-        if (!teacher) {
-          throw new NotFoundException('Teacher not found');
-        }
-
-        student.created_by_teacher_id = updateStudentDto.teacher_id;
-        student.class_code = teacher.class_code || 'UNASSIGNED';
-      }
-    }
-
-    const updatedStudent = await this.studentRepository.save(student);
-
-    return {
-      success: true,
-      student: {
-        id: updatedStudent.id,
-        name: updatedStudent.name,
-        email: updatedStudent.email,
-        pin: updatedStudent.pin_code,
-      },
-    };
-  }
-
-  /**
-   * Generate new PIN for student
-   */
-  async generateNewPin(id: number) {
-    const student = await this.studentRepository.findOne({
-      where: { id, role: UserRole.STUDENT },
-    });
-
-    if (!student) {
-      throw new NotFoundException('Student not found');
-    }
-
-    // Generate a random 4-digit PIN
-    const newPin = Math.floor(1000 + Math.random() * 9000).toString();
-    student.pin_code = newPin;
-
-    await this.studentRepository.save(student);
-
-    return {
-      success: true,
-      pin: newPin,
-      message: 'New PIN generated successfully',
-    };
-  }
-
-  /**
-   * Reset student progress
-   */
-  async resetStudentProgress(id: number) {
-    const student = await this.studentRepository.findOne({
-      where: { id, role: UserRole.STUDENT },
-    });
-
-    if (!student) {
-      throw new NotFoundException('Student not found');
-    }
-
-    // Delete all progress events for this student
-    await this.progressEventRepository.delete({ student_id: id });
-
-    return {
-      success: true,
-      message: 'Student progress reset successfully',
-    };
-  }
-
-  /**
-   * Delete student
-   */
-  async deleteStudent(id: number) {
-    const student = await this.studentRepository.findOne({
-      where: { id, role: UserRole.STUDENT },
-    });
-
-    if (!student) {
-      throw new NotFoundException('Student not found');
-    }
-
-    // Delete all progress events first (cascade delete)
-    await this.progressEventRepository.delete({ student_id: id });
-
-    // Delete the student
-    await this.studentRepository.remove(student);
-
-    return {
-      success: true,
-      message: 'Student deleted successfully',
-    };
-  }
-
-  /**
-   * Generate a unique class code
-   */
-  private generateClassCode(): string {
-    const year = new Date().getFullYear();
-    const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
-    return `CLASS${year}_${randomSuffix}`;
-  }
-
-  /**
-   * Generate a unique 4-digit PIN for a student
-   */
-  private async generateUniquePin(): Promise<string> {
-    let pin = '';
-    let isUnique = false;
-
-    while (!isUnique) {
-      // Generate a random 4-digit PIN
-      pin = Math.floor(1000 + Math.random() * 9000).toString();
-
-      // Check if this PIN already exists
-      const existingPin = await this.studentRepository.findOne({
-        where: { pin_code: pin },
-      });
-
-      if (!existingPin) {
-        isUnique = true;
-      }
-    }
-
-    return pin;
+    return enrollments.map(enrollment => ({
+      ...enrollment.user,
+      enrolled_at: enrollment.enrolled_at,
+      class_code: enrollment.class_code,
+      badges_earned: enrollment.user.badges.length,
+      progress_events: enrollment.user.progress_events.length,
+    }));
   }
 }

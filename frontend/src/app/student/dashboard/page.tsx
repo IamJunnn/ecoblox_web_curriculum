@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Star, BookOpen, Trophy, Award, Loader2, ArrowRight, CheckCircle } from 'lucide-react'
+import { Star, BookOpen, Trophy, Award, Loader2, ArrowRight, CheckCircle, Lock } from 'lucide-react'
 import useAuthStore from '@/store/authStore'
 import progressAPI, { StudentStats, LeaderboardEntry } from '@/lib/api/progress.api'
 import coursesAPI, { Course } from '@/lib/api/courses.api'
@@ -67,27 +67,27 @@ export default function StudentDashboard() {
           const courseProgressData = await progressAPI.getStudentCourseProgress(user.id, course.id)
           const events = courseProgressData.progress_events || []
 
-          // Count completed steps
+          // Count completed steps (only those with is_checked = true)
           const completedSteps = new Set()
+          console.log(`[Course ${course.id}] Total events:`, events.length)
           events.forEach((event: any) => {
             if (event.event_type === 'step_checked') {
               const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
-              completedSteps.add(`${event.level}-${data.step}`)
+              const stepKey = `${event.level}-${data.step}`
+              // Only count if is_checked is true (or undefined for backward compatibility)
+              const isChecked = event.is_checked !== false
+              console.log(`[Course ${course.id}] Step event - Level: ${event.level}, Step: ${data.step}, is_checked: ${event.is_checked}, Key: ${stepKey}`)
+
+              if (isChecked) {
+                completedSteps.add(stepKey)
+              }
             }
           })
+          console.log(`[Course ${course.id}] Unique completed steps:`, Array.from(completedSteps))
 
-          // Determine total steps based on course
-          // Course 1 (Install Roblox Studio) has 5 steps in level 1
-          // Course 2 (Create a Roblox Account) has 7 steps in level 1
-          // Course 3 (Studio Basics) has 4 steps per level × 6 levels = 24 steps
-          let totalSteps = 0
-          if (course.id === 1) {
-            totalSteps = 5 // Install Roblox Studio - 5 steps
-          } else if (course.id === 2) {
-            totalSteps = 7 // Create a Roblox Account - 7 steps
-          } else if (course.id === 3) {
-            totalSteps = course.total_levels * 4 // Studio Basics - 4 steps per level × 6 levels = 24 steps
-          }
+          // Get total steps from course data (stored in database)
+          const totalSteps = course.total_steps || 0
+          console.log(`[Course ${course.id}] total_steps from DB: ${course.total_steps}, using: ${totalSteps}`)
 
           const isCompleted = totalSteps > 0 && completedSteps.size >= totalSteps
           const isInProgress = completedSteps.size > 0 && !isCompleted
@@ -116,16 +116,21 @@ export default function StudentDashboard() {
       }
       setCourseProgress(progressMap)
 
-      // Calculate overall progress based on actual course progress
-      let totalProgress = 0
-      let courseCount = 0
+      // Calculate overall progress based on completed courses (not steps)
+      let completedCoursesCount = 0
+      let totalCoursesCount = loadedCourses.length
+
       for (const course of loadedCourses) {
-        if (progressMap[course.id]) {
-          totalProgress += progressMap[course.id].progressPercentage
-          courseCount++
+        if (progressMap[course.id] && progressMap[course.id].isCompleted) {
+          completedCoursesCount++
+          console.log(`[Overall] Course ${course.id} (${course.title}): COMPLETED ✓`)
+        } else {
+          console.log(`[Overall] Course ${course.id} (${course.title}): ${progressMap[course.id]?.isInProgress ? 'IN PROGRESS' : 'NOT STARTED'}`)
         }
       }
-      const overallProgress = courseCount > 0 ? Math.round(totalProgress / courseCount) : 0
+
+      const overallProgress = totalCoursesCount > 0 ? Math.round((completedCoursesCount / totalCoursesCount) * 100) : 0
+      console.log(`[Overall] Progress: ${completedCoursesCount}/${totalCoursesCount} courses completed = ${overallProgress}%`)
 
       // Update stats with calculated overall progress
       setStats({
@@ -144,6 +149,7 @@ export default function StudentDashboard() {
         steps_completed: 0,
         levels_unlocked: 0,
         courses_completed: 0,
+        badges_earned: 0,
       })
     } finally {
       setLoading(false)
@@ -200,13 +206,16 @@ export default function StudentDashboard() {
           <p className="text-3xl font-bold" style={{ color: ROLE_COLORS.student.primary }}>#{currentRank?.rank || '-'}</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-600">Level</span>
-            <Award className="w-8 h-8" style={{ color: ROLE_COLORS.student.primary }} />
+        <Link href="/student/badge-gallery">
+          <div className="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-gray-600">Badges</span>
+              <Trophy className="w-8 h-8 text-yellow-500" />
+            </div>
+            <p className="text-3xl font-bold text-yellow-500">{stats?.badges_earned || 0}</p>
+            <p className="text-xs text-gray-500 mt-2">Click to view gallery</p>
           </div>
-          <p className="text-3xl font-bold" style={{ color: ROLE_COLORS.student.primary }}>{stats?.current_level || 0}</p>
-        </div>
+        </Link>
       </div>
 
       {/* Progress Bar */}
@@ -251,27 +260,46 @@ export default function StudentDashboard() {
                   const isCompleted = progress?.isCompleted || false
                   const isInProgress = progress?.isInProgress || false
                   const progressPercentage = progress?.progressPercentage || 0
+                  const isLocked = course.isLocked || false
+
+                  // Find prerequisite course name
+                  let prerequisiteCourseName = ''
+                  if (isLocked && course.requires_course) {
+                    const prerequisiteCourse = courses.find(c => c.id === course.requires_course)
+                    prerequisiteCourseName = prerequisiteCourse?.title || 'the previous course'
+                  }
 
                   return (
                     <Link
                       key={course.id}
-                      href={`/courses/${course.id}`}
+                      href={isLocked ? '#' : `/courses/${course.id}`}
                       className={`block border rounded-lg p-4 transition group ${
-                        isCompleted
+                        isLocked
+                          ? 'bg-gray-100 border-gray-300 cursor-not-allowed opacity-60'
+                          : isCompleted
                           ? 'bg-green-50 border-green-300 hover:bg-green-100'
                           : isInProgress
                           ? 'bg-blue-50 border-blue-300 hover:bg-blue-100'
                           : 'hover:bg-gray-50 hover:border-green-300'
                       }`}
+                      onClick={(e) => {
+                        if (isLocked) {
+                          e.preventDefault()
+                        }
+                      }}
                     >
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            {isCompleted && (
+                            {isLocked ? (
+                              <Lock className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                            ) : isCompleted ? (
                               <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                            )}
+                            ) : null}
                             <h3 className={`font-medium transition ${
-                              isCompleted
+                              isLocked
+                                ? 'text-gray-500'
+                                : isCompleted
                                 ? 'text-green-700'
                                 : isInProgress
                                 ? 'text-blue-700'
@@ -279,16 +307,26 @@ export default function StudentDashboard() {
                             }`}>
                               {course.title}
                             </h3>
-                            <ArrowRight className={`w-4 h-4 transition-all ${
-                              isCompleted
-                                ? 'text-green-600'
-                                : isInProgress
-                                ? 'text-blue-600'
-                                : 'text-gray-400 group-hover:text-green-600 group-hover:translate-x-1'
-                            }`} />
+                            {!isLocked && (
+                              <ArrowRight className={`w-4 h-4 transition-all ${
+                                isCompleted
+                                  ? 'text-green-600'
+                                  : isInProgress
+                                  ? 'text-blue-600'
+                                  : 'text-gray-400 group-hover:text-green-600 group-hover:translate-x-1'
+                              }`} />
+                            )}
                           </div>
-                          <p className="text-sm text-gray-500 mt-1">{course.description}</p>
-                          {isInProgress && !isCompleted && (
+                          <p className={`text-sm mt-1 ${isLocked ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {course.description}
+                          </p>
+                          {isLocked && (
+                            <div className="mt-2 flex items-center gap-1.5 text-xs text-gray-600 bg-gray-200 px-2 py-1 rounded-md w-fit">
+                              <Lock className="w-3 h-3" />
+                              <span>Complete &quot;{prerequisiteCourseName}&quot; to unlock</span>
+                            </div>
+                          )}
+                          {isInProgress && !isCompleted && !isLocked && (
                             <div className="mt-2">
                               <div className="flex items-center justify-between text-xs mb-1">
                                 <span className="text-blue-700 font-medium">In Progress</span>
@@ -303,23 +341,6 @@ export default function StudentDashboard() {
                             </div>
                           )}
                         </div>
-                        <span
-                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ml-2"
-                          style={{
-                            backgroundColor: isCompleted
-                              ? '#dcfce7'
-                              : isInProgress
-                              ? '#dbeafe'
-                              : ROLE_COLORS.student.light,
-                            color: isCompleted
-                              ? '#166534'
-                              : isInProgress
-                              ? '#1e40af'
-                              : ROLE_COLORS.student.dark
-                          }}
-                        >
-                          {course.total_levels} Levels
-                        </span>
                       </div>
                     </Link>
                   )

@@ -1,0 +1,200 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============ USERS (Students, Teachers, Admins) ============
+model User {
+  id                    Int               @id @default(autoincrement())
+  name                  String
+  email                 String            @unique
+  password_hash         String?
+  pin_code              String?           // For younger students
+  role                  String            @default("student") // "student", "teacher", "admin"
+
+  // Parent contact (for students only)
+  parent_email          String?           // Parent's email for progress notifications
+  parent_name           String?           // Parent's name for personalized emails
+
+  // Teacher relationship
+  created_by_teacher_id Int?              // Which teacher created this student account
+
+  // Class enrollment with codes like "BenGame1-abc3"
+  class_codes           String?           // JSON array of class codes ["BenGame1-abc3", "BenGame2-xy4k"]
+
+  // Account status
+  created_at            DateTime          @default(now())
+  last_active           DateTime          @default(now())
+  invitation_token      String?
+  is_verified           Boolean           @default(false)
+
+  // Relations
+  progress_events       ProgressEvent[]
+  badges                StudentBadge[]
+  game_enrollments      GameEnrollment[]
+
+  @@map("users")
+}
+
+// ============ GAMES (Different Roblox Game Projects) ============
+model Game {
+  id              Int               @id @default(autoincrement())
+  name            String            // "Roblox Obby Adventure", "Roblox Tycoon Game"
+  description     String?
+  display_order   Int               @default(0)
+  is_active       Boolean           @default(true)
+  created_at      DateTime          @default(now())
+
+  courses         Course[]
+  class_codes     ClassCode[]
+  enrollments     GameEnrollment[]
+
+  @@map("games")
+}
+
+// ============ COURSES (Sections within each game) ============
+model Course {
+  id              Int               @id @default(autoincrement())
+  game_id         Int               // Which game this course belongs to
+  course_order    Int               // 1st, 2nd, 3rd course in the game
+  title           String            // "Build Obstacles", "Add Scripts"
+  description     String?
+  total_steps     Int               // Number of steps to complete (5, 8, 10, etc.)
+
+  // Badge awarded on completion
+  badge_name      String            // "Builder Badge", "Coder Badge"
+  badge_icon      String?           // Emoji or image URL
+  badge_message   String?           // "Great job building your first obstacles!"
+
+  // Course requirements
+  requires_course Int?              // Must complete this course ID first (null = no prerequisite)
+
+  // Display
+  url             String?           // Link to course materials
+  display_order   Int               @default(0)
+  created_at      DateTime          @default(now())
+
+  // Relations
+  game            Game              @relation(fields: [game_id], references: [id])
+  progress_events ProgressEvent[]
+  badges          StudentBadge[]
+
+  @@unique([game_id, course_order])
+  @@map("courses")
+}
+
+// ============ PROGRESS TRACKING ============
+model ProgressEvent {
+  id              Int               @id @default(autoincrement())
+  user_id         Int               // Student ID
+  course_id       Int
+  event_type      String            // "step_checked", "quiz_answered", "course_completed", "badge_earned"
+  level_number    Int?              // Which level (1, 2, 3, 4, 5, 6...)
+  step_number     Int?              // Which step within the level (0, 1, 2, 3...)
+  is_checked      Boolean?          // For step_checked events: true = checked, false = unchecked
+  data            String?           // Additional JSON data if needed
+  timestamp       DateTime          @default(now())
+
+  // Relations
+  user            User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  course          Course            @relation(fields: [course_id], references: [id], onDelete: Cascade)
+
+  // Prevent duplicate progress entries - handles both checkboxes and quizzes
+  @@unique([user_id, course_id, event_type, level_number, step_number])
+  @@index([user_id, course_id])
+  @@map("progress_events")
+}
+
+// ============ BADGES ============
+model StudentBadge {
+  id              Int               @id @default(autoincrement())
+  user_id         Int               // Student who earned the badge
+  course_id       Int               // Which course granted this badge
+  badge_name      String            // "Builder Badge"
+  game_id         Int               // Which game this badge is from
+  earned_at       DateTime          @default(now())
+
+  // Track if parent was notified
+  parent_notified Boolean           @default(false)
+  notified_at     DateTime?
+
+  // Relations
+  user            User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  course          Course            @relation(fields: [course_id], references: [id])
+
+  @@unique([user_id, course_id]) // One badge per course per student
+  @@map("student_badges")
+}
+
+// ============ CLASS CODES (Teacher's class management) ============
+model ClassCode {
+  id              Int               @id @default(autoincrement())
+  code            String            @unique // "BENGAME1-ABC3", "BENGAME2-XY4K"
+  teacher_id      Int               // Teacher who owns this class
+  game_id         Int               // Which game this class is for
+  teacher_name    String            // For display purposes
+
+  // Class settings
+  is_active       Boolean           @default(true)
+  max_students    Int?              // Optional student limit
+  student_count   Int               @default(0) // Current enrolled students
+
+  created_at      DateTime          @default(now())
+  expires_at      DateTime?         // Optional expiration
+
+  // Relations
+  game            Game              @relation(fields: [game_id], references: [id])
+
+  @@index([teacher_id, game_id])
+  @@map("class_codes")
+}
+
+// ============ EMAIL NOTIFICATIONS LOG ============
+model EmailNotification {
+  id              Int               @id @default(autoincrement())
+  recipient_email String            // Parent's email
+  recipient_name  String?           // Parent's name
+  student_id      Int               // Which student this is about
+  student_name    String            // Student's name for the email
+
+  // Email details
+  email_type      String            // "badge_earned", "course_completed", "weekly_progress"
+  subject         String
+  badge_name      String?           // If this is a badge notification
+  course_name     String?           // Course related to the notification
+
+  // Status
+  sent_at         DateTime          @default(now())
+  is_sent         Boolean           @default(true)
+  error_message   String?           // If email failed
+
+  @@index([student_id])
+  @@index([recipient_email])
+  @@map("email_notifications")
+}
+
+// ============ GAME ENROLLMENTS (Which games each student has access to) ============
+model GameEnrollment {
+  id              Int               @id @default(autoincrement())
+  user_id         Int               // Student ID
+  game_id         Int               // Game they're enrolled in
+  class_code      String            // The class code they used to join
+
+  // Enrollment details
+  enrolled_at     DateTime          @default(now())
+  unlocked_by     Int?              // Teacher ID who unlocked this game
+  is_active       Boolean           @default(true)
+  completed_at    DateTime?         // When they finished all courses in the game
+
+  // Relations
+  user            User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  game            Game              @relation(fields: [game_id], references: [id])
+
+  @@unique([user_id, game_id])
+  @@index([class_code])
+  @@map("game_enrollments")
+}

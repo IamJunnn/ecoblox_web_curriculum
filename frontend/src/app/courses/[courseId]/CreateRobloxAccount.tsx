@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trophy, ExternalLink } from 'lucide-react'
+import { Trophy, ExternalLink, CheckCircle } from 'lucide-react'
 import useAuthStore from '@/store/authStore'
 import progressAPI from '@/lib/api/progress.api'
 import CourseHeader from '@/components/courses/CourseHeader'
@@ -35,7 +35,7 @@ export default function CreateRobloxAccount({ course }: CreateRobloxAccountProps
     {
       number: 1,
       title: 'Visit Roblox Sign Up Page',
-      description: 'Click the button below to open the Roblox account creation page'
+      description: 'Click the button above to open the Roblox account creation page'
     },
     {
       number: 2,
@@ -215,8 +215,9 @@ export default function CreateRobloxAccount({ course }: CreateRobloxAccountProps
             <button
               onClick={handleSkipCourse}
               disabled={isSkipping || completedSteps.size === steps.length}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-600"
             >
+              <CheckCircle className="w-5 h-5" />
               {isSkipping ? 'Processing...' : 'Already Have Account?'}
             </button>
           </div>

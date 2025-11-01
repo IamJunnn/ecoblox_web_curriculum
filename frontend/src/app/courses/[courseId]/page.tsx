@@ -4,11 +4,12 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import useAuthStore from '@/store/authStore'
 import coursesAPI from '@/lib/api/courses.api'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Lock, AlertCircle } from 'lucide-react'
 import { ROLE_COLORS } from '@/lib/theme'
 import InstallRobloxStudio from './InstallRobloxStudio'
 import CreateRobloxAccount from './CreateRobloxAccount'
 import StudioBasics from './StudioBasics'
+import GameVision from './GameVision'
 
 interface Course {
   id: number
@@ -16,6 +17,9 @@ interface Course {
   description: string
   total_levels: number
   url: string
+  isLocked?: boolean
+  prerequisiteCourseName?: string
+  requires_course?: number
 }
 
 export default function CoursePage() {
@@ -85,6 +89,47 @@ export default function CoursePage() {
     )
   }
 
+  // Check if course is locked
+  if (course.isLocked) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+          <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+            <Lock className="w-8 h-8 text-gray-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">Course Locked</h2>
+          <p className="text-gray-600 mb-2">
+            You need to complete <span className="font-semibold">&quot;{course.prerequisiteCourseName || 'the previous course'}&quot;</span> before accessing this course.
+          </p>
+          <p className="text-sm text-gray-500 mb-6">
+            Finish all the steps and quests in the prerequisite course to unlock <span className="font-semibold">&quot;{course.title}&quot;</span>.
+          </p>
+          <div className="flex flex-col gap-3">
+            {course.requires_course && (
+              <button
+                onClick={() => router.push(`/courses/${course.requires_course}`)}
+                className="px-6 py-3 rounded-lg text-white font-medium transition hover:opacity-90"
+                style={{ backgroundColor: ROLE_COLORS.student.primary }}
+              >
+                Go to {course.prerequisiteCourseName}
+              </button>
+            )}
+            <button
+              onClick={() => router.push('/student/dashboard')}
+              className="px-6 py-3 rounded-lg border-2 font-medium transition hover:bg-gray-50"
+              style={{
+                borderColor: ROLE_COLORS.student.primary,
+                color: ROLE_COLORS.student.primary
+              }}
+            >
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Render the appropriate course component based on courseId
   if (courseId === 1) {
     return <InstallRobloxStudio course={course} />
@@ -92,6 +137,8 @@ export default function CoursePage() {
     return <CreateRobloxAccount course={course} />
   } else if (courseId === 3) {
     return <StudioBasics course={course} />
+  } else if (courseId === 4) {
+    return <GameVision course={course} />
   }
 
   // Fallback for courses that don't have components yet

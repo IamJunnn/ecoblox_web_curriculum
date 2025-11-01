@@ -12,6 +12,15 @@ export class EmailService {
   }
 
   private initializeTransporter() {
+    if (!this.configService) {
+      this.logger.warn('ConfigService not available. Using fallback email configuration.');
+      this.transporter = nodemailer.createTransport({
+        streamTransport: true,
+        newline: 'unix',
+      });
+      return;
+    }
+
     const emailUser = this.configService.get('EMAIL_USER');
     const emailPass = this.configService.get('EMAIL_PASS');
 

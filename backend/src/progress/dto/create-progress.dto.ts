@@ -1,4 +1,4 @@
-import { IsNumber, IsString, IsOptional, IsObject } from 'class-validator';
+import { IsNumber, IsString, IsOptional } from 'class-validator';
 
 export class CreateProgressDto {
   @IsNumber()
@@ -8,13 +8,12 @@ export class CreateProgressDto {
   course_id: number;
 
   @IsString()
-  event_type: string;
+  event_type: string; // "step_checked", "course_started", "course_completed", "badge_earned"
 
   @IsOptional()
   @IsNumber()
   level?: number;
 
   @IsOptional()
-  @IsObject()
   data?: any;
 }

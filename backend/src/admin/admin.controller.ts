@@ -10,28 +10,59 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
-import { CreateTeacherDto } from './dto/create-teacher.dto';
-import { UpdateTeacherDto } from './dto/update-teacher.dto';
-import { UpdateStudentDto } from './dto/update-student.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../common/enums/user-role.enum';
 
 @Controller('admin')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@UseGuards(JwtAuthGuard)
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
-  @Post('teachers')
-  async createTeacher(@Body() createTeacherDto: CreateTeacherDto) {
-    return this.adminService.createTeacher(createTeacherDto);
+  // ============ STUDENT MANAGEMENT ============
+  @Get('students')
+  async getAllStudents() {
+    const students = await this.adminService.getAllStudents();
+    return {
+      success: true,
+      students,
+      count: students.length,
+    };
   }
 
+  @Get('students/:id')
+  async getStudentById(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.getStudentById(id);
+  }
+
+  @Post('students')
+  async createStudent(@Body() createStudentDto: any) {
+    return this.adminService.createStudent(createStudentDto);
+  }
+
+  @Put('students/:id')
+  async updateStudent(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateStudentDto: any,
+  ) {
+    return this.adminService.updateStudent(id, updateStudentDto);
+  }
+
+  @Delete('students/:id')
+  async deleteStudent(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.deleteStudent(id);
+  }
+
+  // ============ TEACHER MANAGEMENT ============
   @Get('teachers')
   async getAllTeachers() {
-    return this.adminService.getAllTeachers();
+    const teachers = await this.adminService.getAllTeachers();
+    return {
+      success: true,
+      teachers,
+      count: teachers.length,
+    };
   }
 
   @Get('teachers/:id')
@@ -39,10 +70,15 @@ export class AdminController {
     return this.adminService.getTeacherById(id);
   }
 
+  @Post('teachers')
+  async createTeacher(@Body() createTeacherDto: any) {
+    return this.adminService.createTeacher(createTeacherDto);
+  }
+
   @Put('teachers/:id')
   async updateTeacher(
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateTeacherDto: UpdateTeacherDto,
+    @Body() updateTeacherDto: any,
   ) {
     return this.adminService.updateTeacher(id, updateTeacherDto);
   }
@@ -52,47 +88,30 @@ export class AdminController {
     return this.adminService.deleteTeacher(id);
   }
 
+  // ============ STATISTICS ============
   @Get('stats')
-  async getSystemStats() {
-    return this.adminService.getSystemStats();
+  async getStats() {
+    const stats = await this.adminService.getAdminStats();
+    return {
+      success: true,
+      stats: {
+        total_students: stats.totalStudents,
+        total_teachers: stats.totalTeachers,
+        total_admins: 1, // Hardcoded for now
+        verified_teachers: stats.totalTeachers, // All teachers are verified for now
+        pending_teachers: 0,
+      },
+    };
   }
 
-  // Student Management Endpoints
-  @Post('students')
-  async createStudent(@Body() createStudentDto: any) {
-    return this.adminService.createStudent(createStudentDto);
+  // ============ GAME MANAGEMENT ============
+  @Get('games')
+  async getAllGames() {
+    return this.adminService.getAllGames();
   }
 
-  @Get('students')
-  async getAllStudents() {
-    return this.adminService.getAllStudents();
-  }
-
-  @Get('students/:id')
-  async getStudentById(@Param('id', ParseIntPipe) id: number) {
-    return this.adminService.getStudentById(id);
-  }
-
-  @Put('students/:id')
-  async updateStudent(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateStudentDto: UpdateStudentDto,
-  ) {
-    return this.adminService.updateStudent(id, updateStudentDto);
-  }
-
-  @Post('students/:id/generate-pin')
-  async generateNewPin(@Param('id', ParseIntPipe) id: number) {
-    return this.adminService.generateNewPin(id);
-  }
-
-  @Post('students/:id/reset-progress')
-  async resetStudentProgress(@Param('id', ParseIntPipe) id: number) {
-    return this.adminService.resetStudentProgress(id);
-  }
-
-  @Delete('students/:id')
-  async deleteStudent(@Param('id', ParseIntPipe) id: number) {
-    return this.adminService.deleteStudent(id);
+  @Get('games/:id/students')
+  async getGameStudents(@Param('id', ParseIntPipe) gameId: number) {
+    return this.adminService.getStudentsByGame(gameId);
   }
 }

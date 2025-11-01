@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { GraduationCap, Plus, Search, Loader2, Users, TrendingUp, Zap, Activity, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { GraduationCap, Plus, Search, Loader2, Users, TrendingUp, Zap, Activity, X, Edit } from 'lucide-react'
 import { ROLE_COLORS } from '@/lib/theme'
-import adminAPI, { Student, Teacher } from '@/lib/api/admin.api'
+import useAuthStore from '@/store/authStore'
+import adminAPI, { Student, Teacher, Game } from '@/lib/api/admin.api'
 
 function formatLastActive(lastActive: string | null): string {
   if (!lastActive) return 'Never'
@@ -23,24 +25,64 @@ function formatLastActive(lastActive: string | null): string {
 }
 
 export default function ManageStudents() {
+  const router = useRouter()
+  const { user, isAuthenticated, checkAuth } = useAuthStore()
   const [students, setStudents] = useState<Student[]>([])
   const [teachers, setTeachers] = useState<Teacher[]>([])
+  const [games, setGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null)
   const [addStudentForm, setAddStudentForm] = useState({
     name: '',
     email: '',
     pin_code: '',
     teacher_id: '',
+    parent_email: '',
+    game_id: '',
+  })
+  const [editStudentForm, setEditStudentForm] = useState({
+    name: '',
+    email: '',
+    pin_code: '',
+    teacher_id: '',
+    game_id: '',
+    parent_email: '',
   })
   const [submitting, setSubmitting] = useState(false)
 
+  // Check authentication on mount
   useEffect(() => {
-    loadStudents()
-    loadTeachers()
-  }, [])
+    checkAuth()
+  }, [checkAuth])
+
+  // Redirect if not authenticated or not admin
+  useEffect(() => {
+    if (!isAuthenticated) {
+      console.warn('User is not authenticated. Redirecting to home page.')
+      router.push('/')
+      return
+    }
+
+    if (user?.role !== 'admin') {
+      console.warn('User is not an admin. Redirecting to home page.')
+      alert('Access denied. Admin privileges required.')
+      router.push('/')
+      return
+    }
+  }, [isAuthenticated, user, router])
+
+  // Load data only if authenticated
+  useEffect(() => {
+    if (isAuthenticated && user?.role === 'admin') {
+      loadStudents()
+      loadTeachers()
+      loadGames()
+    }
+  }, [isAuthenticated, user])
 
   const loadStudents = async () => {
     try {
@@ -65,6 +107,15 @@ export default function ManageStudents() {
     }
   }
 
+  const loadGames = async () => {
+    try {
+      const gamesData = await adminAPI.getAllGames()
+      setGames(gamesData)
+    } catch (err: any) {
+      console.error('Error loading games:', err)
+    }
+  }
+
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
@@ -85,10 +136,20 @@ export default function ManageStudents() {
         data.teacher_id = parseInt(addStudentForm.teacher_id)
       }
 
+      // Only add parent email if provided
+      if (addStudentForm.parent_email.trim()) {
+        data.parent_email = addStudentForm.parent_email.trim()
+      }
+
+      // Only add game if selected
+      if (addStudentForm.game_id) {
+        data.game_id = parseInt(addStudentForm.game_id)
+      }
+
       await adminAPI.createStudent(data)
 
       // Reset form and close modal
-      setAddStudentForm({ name: '', email: '', pin_code: '', teacher_id: '' })
+      setAddStudentForm({ name: '', email: '', pin_code: '', teacher_id: '', parent_email: '', game_id: '' })
       setShowAddModal(false)
 
       // Reload students
@@ -96,6 +157,59 @@ export default function ManageStudents() {
     } catch (err: any) {
       console.error('Error creating student:', err)
       alert(err.response?.data?.message || 'Failed to create student')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleEditStudent = (student: Student) => {
+    setEditingStudent(student)
+    setEditStudentForm({
+      name: student.name,
+      email: student.email,
+      pin_code: student.pin_code,
+      teacher_id: student.created_by_teacher_id?.toString() || '',
+      game_id: student.enrolled_games && student.enrolled_games.length > 0 ? student.enrolled_games[0].id.toString() : '',
+      parent_email: student.parent_email || '',
+    })
+    setShowEditModal(true)
+  }
+
+  const handleUpdateStudent = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingStudent) return
+    setSubmitting(true)
+
+    try {
+      const data: any = {
+        name: editStudentForm.name,
+        email: editStudentForm.email,
+        pin_code: editStudentForm.pin_code.trim() || undefined,
+        parent_email: editStudentForm.parent_email.trim() || undefined,
+      }
+
+      // Only add teacher if changed
+      if (editStudentForm.teacher_id) {
+        data.teacher_id = parseInt(editStudentForm.teacher_id)
+      }
+
+      // Only add game if selected
+      if (editStudentForm.game_id) {
+        data.game_id = parseInt(editStudentForm.game_id)
+      }
+
+      await adminAPI.updateStudent(editingStudent.id, data)
+
+      // Reset form and close modal
+      setEditStudentForm({ name: '', email: '', pin_code: '', teacher_id: '', game_id: '', parent_email: '' })
+      setShowEditModal(false)
+      setEditingStudent(null)
+
+      // Reload students
+      await loadStudents()
+    } catch (err: any) {
+      console.error('Error updating student:', err)
+      alert(err.response?.data?.message || 'Failed to update student')
     } finally {
       setSubmitting(false)
     }
@@ -133,7 +247,7 @@ export default function ManageStudents() {
   const avgProgress = totalStudents > 0
     ? Math.round(students.reduce((sum, s) => sum + s.progress, 0) / totalStudents)
     : 0
-  const totalXP = students.reduce((sum, s) => sum + s.totalXP, 0)
+  const totalXP = students.reduce((sum, s) => sum + (s.totalXP || 0), 0)
 
   if (loading) {
     return (
@@ -271,6 +385,9 @@ export default function ManageStudents() {
                   Teacher
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Current Game
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Progress
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -287,7 +404,7 @@ export default function ManageStudents() {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                     No students found
                   </td>
                 </tr>
@@ -309,6 +426,15 @@ export default function ManageStudents() {
                       <span className="text-sm text-gray-600">{student.teacher_name || 'No Teacher'}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
+                      {student.enrolled_games && student.enrolled_games.length > 0 ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          {student.enrolled_games[0].name}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-gray-400">Not enrolled</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <div>
                         <div className="w-24 bg-gray-200 rounded-full h-2">
                           <div
@@ -324,13 +450,22 @@ export default function ManageStudents() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="text-sm font-semibold" style={{ color: ROLE_COLORS.student.primary }}>
-                        {student.totalXP.toLocaleString()} XP
+                        {(student.totalXP || 0).toLocaleString()} XP
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatLastActive(student.last_active)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
+                      <button
+                        onClick={() => handleEditStudent(student)}
+                        className="text-sm font-medium mr-3 transition-colors"
+                        style={{ color: ROLE_COLORS.student.primary }}
+                        onMouseOver={(e) => (e.currentTarget.style.color = ROLE_COLORS.student.dark)}
+                        onMouseOut={(e) => (e.currentTarget.style.color = ROLE_COLORS.student.primary)}
+                      >
+                        Edit
+                      </button>
                       <Link
                         href={`/admin/students/${student.id}`}
                         className="text-sm font-medium mr-3 transition-colors"
@@ -427,6 +562,43 @@ export default function ManageStudents() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Parent's Email (Optional)
+                  </label>
+                  <input
+                    type="email"
+                    value={addStudentForm.parent_email}
+                    onChange={(e) => setAddStudentForm({ ...addStudentForm, parent_email: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none text-gray-800 bg-white"
+                    onFocus={(e) => e.currentTarget.style.boxShadow = `0 0 0 2px ${ROLE_COLORS.student.primary}`}
+                    onBlur={(e) => e.currentTarget.style.boxShadow = 'none'}
+                    placeholder="parent@example.com"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Parent will receive progress notifications</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Class/Game Selection (Optional)
+                  </label>
+                  <select
+                    value={addStudentForm.game_id}
+                    onChange={(e) => setAddStudentForm({ ...addStudentForm, game_id: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none text-gray-800 bg-white"
+                    onFocus={(e) => e.currentTarget.style.boxShadow = `0 0 0 2px ${ROLE_COLORS.student.primary}`}
+                    onBlur={(e) => e.currentTarget.style.boxShadow = 'none'}
+                  >
+                    <option value="">Select a game/course</option>
+                    {games.map((game) => (
+                      <option key={game.id} value={game.id}>
+                        {game.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">Which game/course is this student enrolling in?</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Assign to Teacher (Optional)
                   </label>
                   <select
@@ -439,7 +611,7 @@ export default function ManageStudents() {
                     <option value="">No teacher assigned</option>
                     {teachers.map((teacher) => (
                       <option key={teacher.id} value={teacher.id}>
-                        {teacher.name} ({teacher.class_code})
+                        {teacher.name} ({teacher.email})
                       </option>
                     ))}
                   </select>
@@ -465,6 +637,168 @@ export default function ManageStudents() {
                   disabled={submitting}
                 >
                   {submitting ? 'Creating...' : 'Create Student'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Student Modal */}
+      {showEditModal && editingStudent && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-200" style={{ backgroundColor: ROLE_COLORS.student.light }}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Edit className="w-5 h-5" color={ROLE_COLORS.student.dark} />
+                  <h3 className="text-xl font-bold" style={{ color: ROLE_COLORS.student.dark }}>Edit Student</h3>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowEditModal(false)
+                    setEditingStudent(null)
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleUpdateStudent} className="px-6 py-5">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editStudentForm.name}
+                    onChange={(e) => setEditStudentForm({ ...editStudentForm, name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none text-gray-800 bg-white"
+                    onFocus={(e) => e.currentTarget.style.boxShadow = `0 0 0 2px ${ROLE_COLORS.student.primary}`}
+                    onBlur={(e) => e.currentTarget.style.boxShadow = 'none'}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={editStudentForm.email}
+                    onChange={(e) => setEditStudentForm({ ...editStudentForm, email: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none text-gray-800 bg-white"
+                    onFocus={(e) => e.currentTarget.style.boxShadow = `0 0 0 2px ${ROLE_COLORS.student.primary}`}
+                    onBlur={(e) => e.currentTarget.style.boxShadow = 'none'}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    PIN Code
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={4}
+                    pattern="\d{4}"
+                    value={editStudentForm.pin_code}
+                    onChange={(e) => setEditStudentForm({ ...editStudentForm, pin_code: e.target.value.replace(/\D/g, '') })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none text-gray-800 bg-white font-mono text-center text-xl"
+                    onFocus={(e) => e.currentTarget.style.boxShadow = `0 0 0 2px ${ROLE_COLORS.student.primary}`}
+                    onBlur={(e) => e.currentTarget.style.boxShadow = 'none'}
+                    placeholder="0000"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">4-digit PIN code for student login</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Assigned Teacher
+                  </label>
+                  <select
+                    value={editStudentForm.teacher_id}
+                    onChange={(e) => setEditStudentForm({ ...editStudentForm, teacher_id: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none text-gray-800 bg-white"
+                    onFocus={(e) => e.currentTarget.style.boxShadow = `0 0 0 2px ${ROLE_COLORS.student.primary}`}
+                    onBlur={(e) => e.currentTarget.style.boxShadow = 'none'}
+                  >
+                    <option value="">Select which teacher this student belongs to</option>
+                    {teachers.map((teacher) => (
+                      <option key={teacher.id} value={teacher.id}>
+                        {teacher.name} ({teacher.email})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">Select which teacher this student belongs to</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Class/Game Selection
+                  </label>
+                  <select
+                    value={editStudentForm.game_id}
+                    onChange={(e) => setEditStudentForm({ ...editStudentForm, game_id: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none text-gray-800 bg-white"
+                    onFocus={(e) => e.currentTarget.style.boxShadow = `0 0 0 2px ${ROLE_COLORS.student.primary}`}
+                    onBlur={(e) => e.currentTarget.style.boxShadow = 'none'}
+                  >
+                    <option value="">Select a game/course</option>
+                    {games.map((game) => (
+                      <option key={game.id} value={game.id}>
+                        {game.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">Which game/course is this student currently working on?</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Parent's Email (Optional)
+                  </label>
+                  <input
+                    type="email"
+                    value={editStudentForm.parent_email}
+                    onChange={(e) => setEditStudentForm({ ...editStudentForm, parent_email: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none text-gray-800 bg-white"
+                    onFocus={(e) => e.currentTarget.style.boxShadow = `0 0 0 2px ${ROLE_COLORS.student.primary}`}
+                    onBlur={(e) => e.currentTarget.style.boxShadow = 'none'}
+                    placeholder="parent@example.com"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Parent will receive progress notifications</p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="mt-6 flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false)
+                    setEditingStudent(null)
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-100 transition-colors"
+                  disabled={submitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                  style={{ backgroundColor: ROLE_COLORS.student.primary }}
+                  onMouseOver={(e) => !submitting && (e.currentTarget.style.backgroundColor = ROLE_COLORS.student.dark)}
+                  onMouseOut={(e) => !submitting && (e.currentTarget.style.backgroundColor = ROLE_COLORS.student.primary)}
+                  disabled={submitting}
+                >
+                  {submitting ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>

@@ -41,6 +41,8 @@ export interface UpdateStudentDto {
   email?: string
   pin_code?: string
   teacher_id?: number
+  game_id?: number
+  parent_email?: string
 }
 
 export interface UpdateStudentResponse {
@@ -93,7 +95,7 @@ export interface Teacher {
   id: number
   name: string
   email: string
-  class_code: string
+  class_codes: Array<{ code: string; game: { name: string } }>
   is_verified: boolean
   created_at: string
   last_active: string
@@ -119,6 +121,8 @@ export interface Student {
   badges: number
   last_active: string
   created_at: string
+  enrolled_games?: Array<{ id: number; name: string }>
+  parent_email?: string
 }
 
 export interface GetAllStudentsResponse {
@@ -138,6 +142,17 @@ export interface AdminStats {
 export interface GetAdminStatsResponse {
   success: boolean
   stats: AdminStats
+}
+
+export interface Game {
+  id: number
+  name: string
+  description: string | null
+  display_order: number
+  is_active: boolean
+  created_at: string
+  total_courses: number
+  total_students: number
 }
 
 export interface CreateStudentDto {
@@ -245,6 +260,14 @@ class AdminAPI {
    */
   async getAdminStats(): Promise<GetAdminStatsResponse> {
     const response = await apiClient.get<GetAdminStatsResponse>('/admin/stats')
+    return response.data
+  }
+
+  /**
+   * Get all games
+   */
+  async getAllGames(): Promise<Game[]> {
+    const response = await apiClient.get<Game[]>('/admin/games')
     return response.data
   }
 }

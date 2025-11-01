@@ -1,338 +1,418 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { ProgressEvent, EventType } from './entities/progress-event.entity';
-import { Student } from '../students/entities/student.entity';
-import { UserRole } from '../common/enums/user-role.enum';
-import { Course } from '../courses/entities/course.entity';
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateProgressDto } from './dto/create-progress.dto';
 
 @Injectable()
 export class ProgressService {
-  constructor(
-    @InjectRepository(ProgressEvent)
-    private progressRepository: Repository<ProgressEvent>,
-    @InjectRepository(Student)
-    private studentRepository: Repository<Student>,
-    @InjectRepository(Course)
-    private courseRepository: Repository<Course>,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
-  // Create a new progress event
-  async createProgressEvent(
-    studentId: number,
-    courseId: number,
-    eventType: EventType | string,
-    level?: number,
-    data?: any,
-  ): Promise<ProgressEvent | null> {
-    // Check for duplicate events
-    const isDuplicate = await this.checkDuplicateEvent(
-      studentId,
-      courseId,
-      eventType,
-      level,
-      data,
-    );
-
-    if (isDuplicate) {
-      // Return existing event instead of creating duplicate
-      const existing = await this.progressRepository.findOne({
-        where: {
-          student_id: studentId,
-          course_id: courseId,
-          event_type: eventType as EventType,
-          level: level,
-        },
-      });
-      return existing || null;
-    }
-
-    const progressEvent = this.progressRepository.create({
-      student_id: studentId,
-      course_id: courseId,
-      event_type: eventType as EventType,
-      level: level,
-      data: typeof data === 'string' ? data : JSON.stringify(data),
-    });
-
-    await this.progressRepository.save(progressEvent);
-
-    // Update student's last active time
-    await this.studentRepository.update(studentId, {
-      last_active: new Date(),
-    });
-
-    return progressEvent;
-  }
-
-  // Check for duplicate events
-  private async checkDuplicateEvent(
-    studentId: number,
-    courseId: number,
-    eventType: EventType | string,
-    level?: number,
-    data?: any,
-  ): Promise<boolean> {
-    if (eventType === EventType.STEP_CHECKED && data) {
-      const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
-
-      const existing = await this.progressRepository
-        .createQueryBuilder('progress')
-        .where('progress.student_id = :studentId', { studentId })
-        .andWhere('progress.course_id = :courseId', { courseId })
-        .andWhere('progress.event_type = :eventType', { eventType })
-        .andWhere('progress.level = :level', { level })
-        .andWhere(`json_extract(progress.data, '$.step') = :step`, {
-          step: parsedData.step,
-        })
-        .getOne();
-
-      return !!existing;
-    }
-
-    // Allow multiple quiz attempts - do not check for duplicates
-    // This enables students to retake quizzes, and we'll use the most recent attempt
-    if (eventType === EventType.QUIZ_ANSWERED) {
-      return false; // Never treat quiz answers as duplicates
-    }
-
-    if (eventType === EventType.LEVEL_UNLOCKED || eventType === EventType.COURSE_COMPLETED) {
-      const existing = await this.progressRepository.findOne({
-        where: {
-          student_id: studentId,
-          course_id: courseId,
-          event_type: eventType as EventType,
-          level: level,
-        },
-      });
-
-      return !!existing;
-    }
-
-    return false;
-  }
-
-  // Skip/complete a course (for students who already have the prerequisite)
-  async skipCourse(
-    studentId: number,
-    courseId: number,
-    totalSteps: number,
-  ): Promise<{ success: boolean; message: string }> {
+  // Create a progress event
+  async createProgressEvent(dto: CreateProgressDto) {
     try {
-      // Check if course is already completed
-      const existingCompletion = await this.progressRepository.findOne({
+      // Prepare data object and include level if provided
+      let dataObject = dto.data || {};
+      if (dto.level !== undefined) {
+        dataObject = { ...dataObject, level: dto.level };
+      }
+
+      // Convert data to JSON string
+      const dataString = Object.keys(dataObject).length > 0 ? JSON.stringify(dataObject) : null;
+
+      // Extract level_number and step_number
+      const levelNumber = dto.level !== undefined ? dto.level : null;
+      let stepNumber: number | null = null;
+
+      if (dto.event_type === 'step_checked' && dataObject) {
+        stepNumber = dataObject.step !== undefined ? dataObject.step : dataObject.stepNumber || null;
+      }
+
+      // Use upsert for step_checked and quiz_answered events to prevent duplicates
+      let progressEvent;
+    if (dto.event_type === 'step_checked' && stepNumber !== null && levelNumber !== null) {
+      // Extract is_checked from data (defaults to true if not provided for backward compatibility)
+      const isChecked = dataObject.is_checked !== undefined ? dataObject.is_checked : true;
+
+      // Upsert for step checkboxes
+      progressEvent = await this.prisma.progressEvent.upsert({
         where: {
-          student_id: studentId,
-          course_id: courseId,
-          event_type: EventType.COURSE_COMPLETED,
+          user_id_course_id_event_type_level_number_step_number: {
+            user_id: dto.student_id,
+            course_id: dto.course_id,
+            event_type: dto.event_type,
+            level_number: levelNumber,
+            step_number: stepNumber,
+          },
+        },
+        update: {
+          is_checked: isChecked,
+          data: dataString,
+          timestamp: new Date(),
+        },
+        create: {
+          user_id: dto.student_id,
+          course_id: dto.course_id,
+          event_type: dto.event_type,
+          level_number: levelNumber,
+          step_number: stepNumber,
+          is_checked: isChecked,
+          data: dataString,
+        },
+      });
+    } else if (dto.event_type === 'quiz_answered' && levelNumber !== null) {
+      // For quiz answers, manually check if one exists and update or create
+      // (Prisma doesn't allow null in where clauses for unique constraints)
+      const existingQuizAnswer = await this.prisma.progressEvent.findFirst({
+        where: {
+          user_id: dto.student_id,
+          course_id: dto.course_id,
+          event_type: dto.event_type,
+          level_number: levelNumber,
+          step_number: null,
         },
       });
 
-      if (existingCompletion) {
-        return {
-          success: true,
-          message: 'Course already completed',
-        };
+      if (existingQuizAnswer) {
+        // Update existing quiz answer
+        progressEvent = await this.prisma.progressEvent.update({
+          where: { id: existingQuizAnswer.id },
+          data: {
+            data: dataString,
+            timestamp: new Date(),
+          },
+        });
+      } else {
+        // Create new quiz answer
+        progressEvent = await this.prisma.progressEvent.create({
+          data: {
+            user_id: dto.student_id,
+            course_id: dto.course_id,
+            event_type: dto.event_type,
+            level_number: levelNumber,
+            step_number: null,
+            data: dataString,
+          },
+        });
       }
+    } else {
+      // For other event types (course_completed, level_unlocked, etc.), use regular create
+      progressEvent = await this.prisma.progressEvent.create({
+        data: {
+          user_id: dto.student_id,
+          course_id: dto.course_id,
+          event_type: dto.event_type,
+          level_number: levelNumber,
+          step_number: stepNumber,
+          data: dataString,
+        },
+      });
+    }
 
-      // Mark all steps as checked (so progress tracking works correctly)
-      for (let step = 0; step < totalSteps; step++) {
-        await this.createProgressEvent(
-          studentId,
-          courseId,
-          EventType.STEP_CHECKED,
-          1,
-          { step, skipped: true },
-        );
+      // Check if course is completed and award badge if needed
+      let badge: {
+        badge_name: string;
+        badge_icon: string | null;
+        badge_message: string | null;
+        course_title: string;
+      } | null = null;
+      if (dto.event_type === 'course_completed') {
+        badge = await this.awardBadgeForCourse(dto.student_id, dto.course_id);
       }
-
-      // Mark quest as completed
-      await this.createProgressEvent(
-        studentId,
-        courseId,
-        EventType.QUEST_COMPLETED,
-        0,
-        { all_steps_completed: true, skipped: true },
-      );
-
-      // Mark course as completed
-      await this.createProgressEvent(
-        studentId,
-        courseId,
-        EventType.COURSE_COMPLETED,
-        1,
-        { skipped: true, reason: 'Already has prerequisite knowledge/software' },
-      );
 
       return {
-        success: true,
-        message: 'Course marked as complete',
+        event: progressEvent,
+        badge: badge,
       };
     } catch (error) {
-      console.error('Failed to skip course:', error);
-      return {
-        success: false,
-        message: 'Failed to skip course',
-      };
+      console.error('Error creating progress event:', error);
+      console.error('DTO:', dto);
+      throw error;
     }
   }
 
-  // Get all progress events for a student
-  async getStudentProgress(studentId: number): Promise<ProgressEvent[]> {
-    return this.progressRepository.find({
-      where: { student_id: studentId },
-      relations: ['course'],
-      order: { timestamp: 'DESC' },
+  // Award badge for completing a course
+  private async awardBadgeForCourse(userId: number, courseId: number) {
+    // Get course info
+    const course = await this.prisma.course.findUnique({
+      where: { id: courseId },
     });
-  }
 
-  // Get progress for a specific course
-  async getStudentCourseProgress(
-    studentId: number,
-    courseId: number,
-  ): Promise<ProgressEvent[]> {
-    return this.progressRepository.find({
+    if (!course) return null;
+
+    // Check if badge already exists
+    const existingBadge = await this.prisma.studentBadge.findUnique({
       where: {
-        student_id: studentId,
-        course_id: courseId,
+        user_id_course_id: {
+          user_id: userId,
+          course_id: courseId,
+        },
       },
-      order: { timestamp: 'DESC' },
     });
-  }
 
-  // Calculate student stats
-  async getStudentStats(studentId: number): Promise<any> {
-    const events = await this.getStudentProgress(studentId);
-
-    if (!events || events.length === 0) {
+    if (existingBadge) {
+      // Return existing badge with course info
       return {
-        current_level: 0,
-        progress_percentage: 0,
-        total_xp: 0,
-        quiz_score: '0/0',
-        steps_completed: 0,
-        levels_unlocked: 0,
-        courses_completed: 0,
+        badge_name: course.badge_name,
+        badge_icon: course.badge_icon,
+        badge_message: course.badge_message,
+        course_title: course.title,
       };
     }
 
-    // Calculate levels unlocked
-    const levelsUnlocked = new Set(
-      events
-        .filter((e) => e.event_type === EventType.LEVEL_UNLOCKED)
-        .map((e) => e.level),
+    // Award the badge
+    await this.prisma.studentBadge.create({
+      data: {
+        user_id: userId,
+        course_id: courseId,
+        badge_name: course.badge_name,
+        game_id: course.game_id,
+      },
+    });
+
+    // Return badge info
+    return {
+      badge_name: course.badge_name,
+      badge_icon: course.badge_icon,
+      badge_message: course.badge_message,
+      course_title: course.title,
+    };
+  }
+
+  // Get student overall progress and stats
+  async getStudentProgress(studentId: number) {
+    // Get all progress events for student
+    const progressEvents = await this.prisma.progressEvent.findMany({
+      where: { user_id: studentId },
+      include: {
+        course: true,
+      },
+      orderBy: { timestamp: 'desc' },
+    });
+
+    // Get all badges
+    const badges = await this.prisma.studentBadge.findMany({
+      where: { user_id: studentId },
+    });
+
+    // Get enrolled games
+    const enrollments = await this.prisma.gameEnrollment.findMany({
+      where: { user_id: studentId },
+      include: {
+        game: {
+          include: {
+            courses: true,
+          },
+        },
+      },
+    });
+
+    // Calculate stats
+    const completedCourses = new Set(
+      progressEvents
+        .filter((e) => e.event_type === 'course_completed')
+        .map((e) => e.course_id)
     );
 
-    // Calculate steps completed
-    const stepsCompleted = events.filter(
-      (e) => e.event_type === EventType.STEP_CHECKED,
+    const totalXP = progressEvents.filter(
+      (e) => e.event_type === 'step_checked'
+    ).length * 10; // 10 XP per step
+
+    const stepsCompleted = progressEvents.filter(
+      (e) => e.event_type === 'step_checked'
     ).length;
 
-    // Calculate quiz score
-    const quizEvents = events.filter((e) => e.event_type === EventType.QUIZ_ANSWERED);
-    const correctQuizzes = quizEvents.filter((e) => {
-      const data = JSON.parse(e.data || '{}');
-      return data.correct === true;
-    }).length;
-
-    // Calculate XP
-    const quizXP = correctQuizzes * 100;
-    const stepXP = stepsCompleted * 20;
-    const totalXP = quizXP + stepXP;
-
-    // Calculate courses completed
-    const coursesCompleted = new Set(
-      events
-        .filter((e) => e.event_type === EventType.COURSE_COMPLETED)
-        .map((e) => e.course_id),
-    ).size;
-
-    // Get total courses for progress calculation
-    const totalCourses = await this.courseRepository.count();
-    const progressPercentage = Math.round(
-      (coursesCompleted / totalCourses) * 100,
-    );
+    // Get current level (based on XP)
+    const currentLevel = Math.floor(totalXP / 100) + 1;
 
     return {
-      current_level: Math.max(...levelsUnlocked, 0),
-      progress_percentage: progressPercentage,
-      total_xp: totalXP,
-      quiz_score: `${correctQuizzes}/${quizEvents.length}`,
-      steps_completed: stepsCompleted,
-      levels_unlocked: levelsUnlocked.size,
-      courses_completed: coursesCompleted,
+      stats: {
+        current_level: currentLevel,
+        progress_percentage: 0, // Will be calculated on frontend
+        total_xp: totalXP,
+        quiz_score: '0/0',
+        steps_completed: stepsCompleted,
+        levels_unlocked: enrollments.length,
+        courses_completed: completedCourses.size,
+        badges_earned: badges.length,
+      },
+      progress_events: progressEvents,
+      badges: badges,
+    };
+  }
+
+  // Get student progress for a specific course
+  async getStudentCourseProgress(studentId: number, courseId: number) {
+    const progressEvents = await this.prisma.progressEvent.findMany({
+      where: {
+        user_id: studentId,
+        course_id: courseId,
+      },
+      orderBy: { timestamp: 'desc' },
+    });
+
+    return {
+      progress_events: progressEvents.map((event) => {
+        // Parse the data to extract level information
+        let parsedData: any = null;
+        let level: number | null = null;
+
+        if (event.data) {
+          try {
+            parsedData = JSON.parse(event.data);
+            // Get level from data if it exists, otherwise use level_number
+            level = parsedData?.level || event.level_number || null;
+          } catch (e) {
+            console.error('Failed to parse event data:', e);
+          }
+        }
+
+        return {
+          id: event.id,
+          student_id: event.user_id,
+          course_id: event.course_id,
+          event_type: event.event_type,
+          level: level,
+          is_checked: event.is_checked, // Include is_checked field
+          data: parsedData,
+          timestamp: event.timestamp,
+        };
+      }),
     };
   }
 
   // Get leaderboard for a class
-  async getClassLeaderboard(
-    classCode: string,
-    period: 'all' | 'week' | 'month' = 'all',
-  ): Promise<any[]> {
-    // Get all students in the class
-    const students = await this.studentRepository.find({
+  async getLeaderboard(classCode: string, period: string = 'all', studentId?: number) {
+    // Get students in this class
+    const students = await this.prisma.user.findMany({
       where: {
-        class_code: classCode,
-        role: UserRole.STUDENT as any,
+        role: 'student',
+        class_codes: {
+          contains: classCode,
+        },
       },
     });
 
-    if (!students || students.length === 0) {
-      return [];
-    }
-
-    // Calculate date filter
-    let dateFilter = new Date(0); // Beginning of time
-    if (period === 'week') {
-      dateFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    } else if (period === 'month') {
-      dateFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    }
-
     // Calculate XP for each student
-    const leaderboard = await Promise.all(
+    const leaderboardData = await Promise.all(
       students.map(async (student) => {
-        const query = this.progressRepository
-          .createQueryBuilder('progress')
-          .where('progress.student_id = :studentId', {
-            studentId: student.id,
-          });
+        let progressEvents = await this.prisma.progressEvent.findMany({
+          where: { user_id: student.id },
+        });
 
-        if (period !== 'all') {
-          query.andWhere('progress.timestamp >= :date', { date: dateFilter });
+        // Filter by period if needed
+        if (period === 'week') {
+          const oneWeekAgo = new Date();
+          oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+          progressEvents = progressEvents.filter(
+            (e) => new Date(e.timestamp) >= oneWeekAgo
+          );
+        } else if (period === 'month') {
+          const oneMonthAgo = new Date();
+          oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+          progressEvents = progressEvents.filter(
+            (e) => new Date(e.timestamp) >= oneMonthAgo
+          );
         }
 
-        const events = await query.getMany();
-
-        // Calculate XP
-        let totalXP = 0;
-        events.forEach((event) => {
-          if (event.event_type === EventType.STEP_CHECKED) {
-            totalXP += 20;
-          } else if (event.event_type === EventType.QUIZ_ANSWERED) {
-            const data = JSON.parse(event.data || '{}');
-            if (data.correct) {
-              totalXP += 100;
-            }
-          }
-        });
+        const totalXP = progressEvents.filter(
+          (e) => e.event_type === 'step_checked'
+        ).length * 10;
 
         return {
           student_id: student.id,
           name: student.name,
           email: student.email,
           total_xp: totalXP,
-          rank: 0, // Will be set later
-        } as any;
-      }),
+        };
+      })
     );
 
-    // Sort by XP and add rank
-    leaderboard.sort((a, b) => b.total_xp - a.total_xp);
-    leaderboard.forEach((item, index) => {
-      item.rank = index + 1;
+    // Sort by XP
+    leaderboardData.sort((a, b) => b.total_xp - a.total_xp);
+
+    // Add ranks
+    const leaderboard = leaderboardData.map((entry, index) => ({
+      ...entry,
+      rank: index + 1,
+    }));
+
+    // Find current student
+    const currentStudent = studentId
+      ? leaderboard.find((entry) => entry.student_id === studentId)
+      : null;
+
+    return {
+      leaderboard: leaderboard.slice(0, 10), // Top 10
+      current_student: currentStudent,
+    };
+  }
+
+  // Skip/complete a course (for students who already have prerequisite knowledge)
+  async skipCourse(studentId: number, courseId: number, totalSteps: number) {
+    const course = await this.prisma.course.findUnique({
+      where: { id: courseId },
     });
 
-    return leaderboard;
+    if (!course) {
+      throw new Error('Course not found');
+    }
+
+    // Create individual step_checked events for all steps
+    // Course 1 (Install Roblox Studio): 5 steps in level 1
+    // Course 2 (Create Roblox Account): 7 steps in level 1
+    // Course 3+ may have different structures
+    for (let i = 0; i < totalSteps; i++) {
+      await this.prisma.progressEvent.upsert({
+        where: {
+          user_id_course_id_event_type_level_number_step_number: {
+            user_id: studentId,
+            course_id: courseId,
+            event_type: 'step_checked',
+            level_number: 1,
+            step_number: i,
+          },
+        },
+        update: {
+          data: JSON.stringify({ step: i, skipped: true }),
+          timestamp: new Date(),
+        },
+        create: {
+          user_id: studentId,
+          course_id: courseId,
+          event_type: 'step_checked',
+          level_number: 1,
+          step_number: i,
+          data: JSON.stringify({ step: i, skipped: true }),
+        },
+      });
+    }
+
+    // Create quest_completed event
+    await this.prisma.progressEvent.create({
+      data: {
+        user_id: studentId,
+        course_id: courseId,
+        event_type: 'quest_completed',
+        level_number: 1,
+        step_number: null,
+        data: JSON.stringify({ all_steps_completed: true, skipped: true }),
+      },
+    });
+
+    // Mark course as completed
+    await this.prisma.progressEvent.create({
+      data: {
+        user_id: studentId,
+        course_id: courseId,
+        event_type: 'course_completed',
+        level_number: 1,
+        step_number: null,
+        data: JSON.stringify({ skipped: true, totalSteps }),
+      },
+    });
+
+    // Award badge
+    await this.awardBadgeForCourse(studentId, courseId);
+
+    return { success: true, message: 'Course skipped successfully' };
   }
 }

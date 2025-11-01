@@ -48,7 +48,21 @@
       "Bash(npx ts-node:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(kill-all-servers.bat)",
+      "Bash(npx prisma:*)",
+      "Bash(copy:*)",
+      "Bash(PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=\"It is fine we don''t have any student or teachers'' data at all. We have courses only so far\" npx prisma migrate reset:*)",
+      "Bash(del database.sqlite database_backup_2025-10-30_18-08-26.db ecoblox_academy.db)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm run start:swc:*)",
+      "Bash(del backendsrcconfigdatabase.config.ts)",
+      "Bash(PORT=3401 npm run dev:*)",
+      "Bash(nul)",
+      "Bash(call kill-all-servers.bat)",
+      "Bash(cmd /c kill-all-servers.bat)",
+      "Bash(PORT=3400 npm run start:swc:*)",
+      "Bash(PORT=3000 npm run dev:*)"
     ],
     "deny": [],
     "ask": []

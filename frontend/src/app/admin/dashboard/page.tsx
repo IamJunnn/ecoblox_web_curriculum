@@ -84,7 +84,7 @@ export default function AdminDashboard() {
           name: teacher.name,
           email: teacher.email,
           role: 'teacher' as const,
-          classCode: teacher.class_code || 'N/A',
+          classCode: teacher.class_codes.length > 0 ? teacher.class_codes[0].code : 'N/A',
           lastActive: formatLastActive(teacher.last_active),
         })),
       ]
