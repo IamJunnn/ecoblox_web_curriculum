@@ -10,7 +10,7 @@ import adminAPI, { type Teacher, type CreateTeacherDto } from '@/lib/api/admin.a
 
 export default function ManageTeachers() {
   const router = useRouter()
-  const { user, isAuthenticated, checkAuth } = useAuthStore()
+  const { user, isAuthenticated, isInitialized, checkAuth } = useAuthStore()
   const [teachers, setTeachers] = useState<Teacher[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -28,8 +28,10 @@ export default function ManageTeachers() {
     checkAuth()
   }, [checkAuth])
 
-  // Redirect if not authenticated or not admin
+  // Redirect if not authenticated or not admin (only after initialization)
   useEffect(() => {
+    if (!isInitialized) return // Wait for auth to initialize
+
     if (!isAuthenticated) {
       console.warn('User is not authenticated. Redirecting to home page.')
       router.push('/')
@@ -42,7 +44,7 @@ export default function ManageTeachers() {
       router.push('/')
       return
     }
-  }, [isAuthenticated, user, router])
+  }, [isInitialized, isAuthenticated, user, router])
 
   // Fetch teachers on mount (only if authenticated)
   useEffect(() => {

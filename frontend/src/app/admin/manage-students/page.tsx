@@ -7,6 +7,7 @@ import { GraduationCap, Plus, Search, Loader2, Users, TrendingUp, Zap, Activity,
 import { ROLE_COLORS } from '@/lib/theme'
 import useAuthStore from '@/store/authStore'
 import adminAPI, { Student, Teacher, Game } from '@/lib/api/admin.api'
+import AddStudentModal from '@/components/modals/AddStudentModal'
 
 function formatLastActive(lastActive: string | null): string {
   if (!lastActive) return 'Never'
@@ -26,7 +27,7 @@ function formatLastActive(lastActive: string | null): string {
 
 export default function ManageStudents() {
   const router = useRouter()
-  const { user, isAuthenticated, checkAuth } = useAuthStore()
+  const { user, isAuthenticated, isInitialized, checkAuth } = useAuthStore()
   const [students, setStudents] = useState<Student[]>([])
   const [teachers, setTeachers] = useState<Teacher[]>([])
   const [games, setGames] = useState<Game[]>([])
@@ -36,14 +37,6 @@ export default function ManageStudents() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingStudent, setEditingStudent] = useState<Student | null>(null)
-  const [addStudentForm, setAddStudentForm] = useState({
-    name: '',
-    email: '',
-    pin_code: '',
-    teacher_id: '',
-    parent_email: '',
-    game_id: '',
-  })
   const [editStudentForm, setEditStudentForm] = useState({
     name: '',
     email: '',
@@ -59,8 +52,10 @@ export default function ManageStudents() {
     checkAuth()
   }, [checkAuth])
 
-  // Redirect if not authenticated or not admin
+  // Redirect if not authenticated or not admin (only after initialization)
   useEffect(() => {
+    if (!isInitialized) return // Wait for auth to initialize
+
     if (!isAuthenticated) {
       console.warn('User is not authenticated. Redirecting to home page.')
       router.push('/')
@@ -73,7 +68,7 @@ export default function ManageStudents() {
       router.push('/')
       return
     }
-  }, [isAuthenticated, user, router])
+  }, [isInitialized, isAuthenticated, user, router])
 
   // Load data only if authenticated
   useEffect(() => {
@@ -116,51 +111,6 @@ export default function ManageStudents() {
     }
   }
 
-  const handleAddStudent = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSubmitting(true)
-
-    try {
-      const data: any = {
-        name: addStudentForm.name,
-        email: addStudentForm.email,
-      }
-
-      // Only add PIN if provided
-      if (addStudentForm.pin_code.trim()) {
-        data.pin_code = addStudentForm.pin_code.trim()
-      }
-
-      // Only add teacher if selected
-      if (addStudentForm.teacher_id) {
-        data.teacher_id = parseInt(addStudentForm.teacher_id)
-      }
-
-      // Only add parent email if provided
-      if (addStudentForm.parent_email.trim()) {
-        data.parent_email = addStudentForm.parent_email.trim()
-      }
-
-      // Only add game if selected
-      if (addStudentForm.game_id) {
-        data.game_id = parseInt(addStudentForm.game_id)
-      }
-
-      await adminAPI.createStudent(data)
-
-      // Reset form and close modal
-      setAddStudentForm({ name: '', email: '', pin_code: '', teacher_id: '', parent_email: '', game_id: '' })
-      setShowAddModal(false)
-
-      // Reload students
-      await loadStudents()
-    } catch (err: any) {
-      console.error('Error creating student:', err)
-      alert(err.response?.data?.message || 'Failed to create student')
-    } finally {
-      setSubmitting(false)
-    }
-  }
 
   const handleEditStudent = (student: Student) => {
     setEditingStudent(student)
@@ -491,158 +441,12 @@ export default function ManageStudents() {
       </div>
 
       {/* Add Student Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden">
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-200" style={{ backgroundColor: ROLE_COLORS.student.light }}>
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold" style={{ color: ROLE_COLORS.student.dark }}>Add New Student</h3>
-                <button
-                  onClick={() => setShowAddModal(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleAddStudent} className="px-6 py-5">
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={addStudentForm.name}
-                    onChange={(e) => setAddStudentForm({ ...addStudentForm, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none text-gray-800 bg-white"
-                    onFocus={(e) => e.currentTarget.style.boxShadow = `0 0 0 2px ${ROLE_COLORS.student.primary}`}
-                    onBlur={(e) => e.currentTarget.style.boxShadow = 'none'}
-                    placeholder="Enter student name"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={addStudentForm.email}
-                    onChange={(e) => setAddStudentForm({ ...addStudentForm, email: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none text-gray-800 bg-white"
-                    onFocus={(e) => e.currentTarget.style.boxShadow = `0 0 0 2px ${ROLE_COLORS.student.primary}`}
-                    onBlur={(e) => e.currentTarget.style.boxShadow = 'none'}
-                    placeholder="Enter student email"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    PIN Code (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    maxLength={4}
-                    pattern="\d{4}"
-                    value={addStudentForm.pin_code}
-                    onChange={(e) => setAddStudentForm({ ...addStudentForm, pin_code: e.target.value.replace(/\D/g, '') })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none text-gray-800 bg-white font-mono"
-                    onFocus={(e) => e.currentTarget.style.boxShadow = `0 0 0 2px ${ROLE_COLORS.student.primary}`}
-                    onBlur={(e) => e.currentTarget.style.boxShadow = 'none'}
-                    placeholder="Leave empty to auto-generate"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">4-digit PIN (auto-generated if empty)</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Parent's Email (Optional)
-                  </label>
-                  <input
-                    type="email"
-                    value={addStudentForm.parent_email}
-                    onChange={(e) => setAddStudentForm({ ...addStudentForm, parent_email: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none text-gray-800 bg-white"
-                    onFocus={(e) => e.currentTarget.style.boxShadow = `0 0 0 2px ${ROLE_COLORS.student.primary}`}
-                    onBlur={(e) => e.currentTarget.style.boxShadow = 'none'}
-                    placeholder="parent@example.com"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Parent will receive progress notifications</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Class/Game Selection (Optional)
-                  </label>
-                  <select
-                    value={addStudentForm.game_id}
-                    onChange={(e) => setAddStudentForm({ ...addStudentForm, game_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none text-gray-800 bg-white"
-                    onFocus={(e) => e.currentTarget.style.boxShadow = `0 0 0 2px ${ROLE_COLORS.student.primary}`}
-                    onBlur={(e) => e.currentTarget.style.boxShadow = 'none'}
-                  >
-                    <option value="">Select a game/course</option>
-                    {games.map((game) => (
-                      <option key={game.id} value={game.id}>
-                        {game.name}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">Which game/course is this student enrolling in?</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Assign to Teacher (Optional)
-                  </label>
-                  <select
-                    value={addStudentForm.teacher_id}
-                    onChange={(e) => setAddStudentForm({ ...addStudentForm, teacher_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none text-gray-800 bg-white"
-                    onFocus={(e) => e.currentTarget.style.boxShadow = `0 0 0 2px ${ROLE_COLORS.student.primary}`}
-                    onBlur={(e) => e.currentTarget.style.boxShadow = 'none'}
-                  >
-                    <option value="">No teacher assigned</option>
-                    {teachers.map((teacher) => (
-                      <option key={teacher.id} value={teacher.id}>
-                        {teacher.name} ({teacher.email})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="mt-6 flex gap-3 justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-100 transition-colors"
-                  disabled={submitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-                  style={{ backgroundColor: ROLE_COLORS.student.primary }}
-                  onMouseOver={(e) => !submitting && (e.currentTarget.style.backgroundColor = ROLE_COLORS.student.dark)}
-                  onMouseOut={(e) => !submitting && (e.currentTarget.style.backgroundColor = ROLE_COLORS.student.primary)}
-                  disabled={submitting}
-                >
-                  {submitting ? 'Creating...' : 'Create Student'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AddStudentModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={loadStudents}
+        role="admin"
+      />
 
       {/* Edit Student Modal */}
       {showEditModal && editingStudent && (

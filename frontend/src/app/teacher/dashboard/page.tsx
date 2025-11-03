@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Users, Activity, BarChart3, Star, Award, Plus, Search, X, Send } from 'lucide-react'
+import { Users, Activity, BarChart3, Star, Award, Plus, Search } from 'lucide-react'
 import { ROLE_COLORS } from '@/lib/theme'
-import { createStudent, getTeacherStudents, getTeacherStats, type Student, type TeacherStats } from '@/lib/api/teacher.api'
+import { getTeacherStudents, getTeacherStats, type Student, type TeacherStats } from '@/lib/api/teacher.api'
+import AddStudentModal from '@/components/modals/AddStudentModal'
 
 // Format date to readable format (e.g., "Oct 28, 2025 at 10:34 PM")
 function formatDateTime(dateString: string): string {
@@ -36,12 +37,6 @@ export default function TeacherDashboard() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterProgress, setFilterProgress] = useState('all')
   const [showModal, setShowModal] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    pin_code: '',
-  })
 
   // Fetch students and stats on mount
   useEffect(() => {
@@ -65,49 +60,7 @@ export default function TeacherDashboard() {
   }
 
   const handleAddStudent = () => {
-    setFormData({ name: '', email: '', pin_code: '' })
     setShowModal(true)
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!formData.name || !formData.email) {
-      alert('Please fill in student name and email')
-      return
-    }
-
-    setSubmitting(true)
-
-    try {
-      const response = await createStudent({
-        name: formData.name,
-        email: formData.email,
-        pin_code: formData.pin_code || undefined,
-      })
-
-      // Show success message with the student's PIN
-      alert(
-        `Student added successfully!\n\n` +
-        `Name: ${response.student.name}\n` +
-        `Email: ${response.student.email}\n` +
-        `PIN: ${response.student.pin}\n` +
-        `Class Code: ${response.student.classCode}\n\n` +
-        `The student can now log in using their PIN.`
-      )
-
-      setShowModal(false)
-      setFormData({ name: '', email: '', pin_code: '' })
-
-      // Refresh dashboard data to show the new student
-      await fetchDashboardData()
-    } catch (error: any) {
-      console.error('Error adding student:', error)
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to add student'
-      alert(`Error: ${errorMessage}`)
-    } finally {
-      setSubmitting(false)
-    }
   }
 
   const filteredStudents = students.filter((student) => {
@@ -317,134 +270,12 @@ export default function TeacherDashboard() {
       </div>
 
       {/* Add Student Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden">
-            {/* Header */}
-            <div
-              className="px-6 py-4 border-b"
-              style={{ backgroundColor: ROLE_COLORS.teacher.light }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Send className="w-6 h-6" color={ROLE_COLORS.teacher.primary} />
-                  <h3 className="text-xl font-bold" style={{ color: ROLE_COLORS.teacher.dark }}>
-                    Add New Student
-                  </h3>
-                </div>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                  disabled={submitting}
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Student Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                  disabled={submitting}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-800 bg-white focus:outline-none"
-                  onFocus={(e) => {
-                    e.currentTarget.style.boxShadow = `0 0 0 2px ${ROLE_COLORS.teacher.primary}`
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.boxShadow = 'none'
-                  }}
-                  placeholder="John Doe"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Address <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                  disabled={submitting}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-800 bg-white focus:outline-none"
-                  onFocus={(e) => {
-                    e.currentTarget.style.boxShadow = `0 0 0 2px ${ROLE_COLORS.teacher.primary}`
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.boxShadow = 'none'
-                  }}
-                  placeholder="student@school.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  PIN Code (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={formData.pin_code}
-                  onChange={(e) => setFormData({ ...formData, pin_code: e.target.value })}
-                  disabled={submitting}
-                  maxLength={4}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-800 bg-white focus:outline-none font-mono"
-                  onFocus={(e) => {
-                    e.currentTarget.style.boxShadow = `0 0 0 2px ${ROLE_COLORS.teacher.primary}`
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.boxShadow = 'none'
-                  }}
-                  placeholder="Leave empty to auto-generate"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  If empty, a 4-digit PIN will be generated automatically
-                </p>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 justify-end pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  disabled={submitting}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-100 transition-colors disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex items-center gap-2 px-4 py-2 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-                  style={{ backgroundColor: ROLE_COLORS.teacher.primary }}
-                  onMouseOver={(e) => !submitting && (e.currentTarget.style.backgroundColor = ROLE_COLORS.teacher.dark)}
-                  onMouseOut={(e) => !submitting && (e.currentTarget.style.backgroundColor = ROLE_COLORS.teacher.primary)}
-                >
-                  {submitting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Adding...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4" />
-                      Add Student
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AddStudentModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onSuccess={fetchDashboardData}
+        role="teacher"
+      />
     </div>
   )
 }

@@ -62,7 +62,8 @@
       "Bash(call kill-all-servers.bat)",
       "Bash(cmd /c kill-all-servers.bat)",
       "Bash(PORT=3400 npm run start:swc:*)",
-      "Bash(PORT=3000 npm run dev:*)"
+      "Bash(PORT=3000 npm run dev:*)",
+      "Bash(ping:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,0 +1,40 @@
+{
+  "summary": {
+    "total": 5,
+    "passed": 1,
+    "failed": 2,
+    "successRate": "20.00%",
+    "timestamp": "2025-11-03T04:54:40.963Z"
+  },
+  "errors": [
+    {
+      "timestamp": "2025-11-03T04:54:40.953Z",
+      "endpoint": "/",
+      "method": "GET",
+      "status": "FAIL",
+      "message": "Health check failed (0)",
+      "details": null
+    },
+    {
+      "timestamp": "2025-11-03T04:54:40.957Z",
+      "endpoint": "/api/auth/login",
+      "method": "POST",
+      "status": "FAIL",
+      "message": "Admin login failed (0)",
+      "details": null
+    }
+  ],
+  "testData": {
+    "adminId": null,
+    "teacherId": null,
+    "studentId": null,
+    "courseId": null,
+    "gameId": null,
+    "classCode": null
+  },
+  "tokens": {
+    "admin": null,
+    "teacher": null,
+    "student": null
+  }
+}

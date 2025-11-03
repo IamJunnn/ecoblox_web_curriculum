@@ -53,12 +53,12 @@ export class EmailService {
     name: string,
     invitationLink: string,
   ) {
-    const subject = 'Welcome to EcoBlox Academy - Set Your Password';
+    const subject = 'Welcome to EcoBlox! - Set Your Password';
     const html = this.getTeacherInvitationTemplate(name, invitationLink);
 
     try {
       const info = await this.transporter.sendMail({
-        from: `"EcoBlox Academy" <${this.configService.get('EMAIL_USER') || 'noreply@ecoblox.com'}>`,
+        from: `"EcoBlox" <${this.configService.get('EMAIL_USER') || 'noreply@ecoblox.com'}>`,
         to: email,
         subject,
         html,
@@ -148,12 +148,12 @@ export class EmailService {
 <body>
   <div class="container">
     <div class="header">
-      <h1>Welcome to EcoBlox Academy!</h1>
+      <h1>Welcome to EcoBlox!</h1>
     </div>
     <div class="content">
       <p>Hello ${name},</p>
 
-      <p>You've been invited to join EcoBlox Academy as a teacher! We're excited to have you on board.</p>
+      <p>You've been invited to join EcoBlox as a teacher! We're excited to have you on board.</p>
 
       <p>To get started, please click the button below to set your password and activate your account:</p>
 
@@ -178,11 +178,11 @@ export class EmailService {
 
       <p>If you have any questions, please don't hesitate to reach out!</p>
 
-      <p>Best regards,<br>The EcoBlox Academy Team</p>
+      <p>Best regards,<br>The EcoBlox Team</p>
     </div>
     <div class="footer">
       <p>This email was sent to ${name}. If you didn't expect this email, please ignore it.</p>
-      <p>&copy; ${new Date().getFullYear()} EcoBlox Academy. All rights reserved.</p>
+      <p>&copy; ${new Date().getFullYear()} EcoBlox. All rights reserved.</p>
     </div>
   </div>
 </body>
@@ -194,13 +194,13 @@ export class EmailService {
    * Send student welcome email with login credentials
    */
   async sendStudentWelcome(email: string, name: string, pin: string) {
-    const subject = 'Welcome to EcoBlox Academy - Your Login Credentials';
+    const subject = 'Welcome to EcoBlox! - Your Login Credentials';
     const loginUrl = `${this.configService.get('FRONTEND_URL') || 'http://localhost:3000'}`;
     const html = this.getStudentWelcomeTemplate(name, email, pin, loginUrl);
 
     try {
       const info = await this.transporter.sendMail({
-        from: `"EcoBlox Academy" <${this.configService.get('EMAIL_USER') || 'noreply@ecoblox.com'}>`,
+        from: `"EcoBlox" <${this.configService.get('EMAIL_USER') || 'noreply@ecoblox.com'}>`,
         to: email,
         subject,
         html,
@@ -333,7 +333,7 @@ export class EmailService {
 <body>
   <div class="container">
     <div class="header">
-      <h1>🎓 Welcome to EcoBlox Academy!</h1>
+      <h1>🎓 Welcome to EcoBlox!</h1>
     </div>
     <div class="content">
       <p>Hello ${name},</p>
@@ -355,7 +355,7 @@ export class EmailService {
       </div>
 
       <center>
-        <a href="${loginUrl}" class="button">Go to EcoBlox Academy</a>
+        <a href="${loginUrl}" class="button">Go to EcoBlox</a>
       </center>
 
       <div class="instructions">
@@ -380,11 +380,11 @@ export class EmailService {
 
       <p>If you have any questions or need help, ask your teacher!</p>
 
-      <p>Happy coding!<br>The EcoBlox Academy Team</p>
+      <p>Happy coding!<br>The EcoBlox Team</p>
     </div>
     <div class="footer">
       <p>This email was sent to ${email}. If you didn't expect this email, please contact your teacher.</p>
-      <p>&copy; ${new Date().getFullYear()} EcoBlox Academy. All rights reserved.</p>
+      <p>&copy; ${new Date().getFullYear()} EcoBlox. All rights reserved.</p>
     </div>
   </div>
 </body>
@@ -398,9 +398,9 @@ export class EmailService {
   async sendTestEmail(to: string) {
     try {
       const info = await this.transporter.sendMail({
-        from: `"EcoBlox Academy" <${this.configService.get('EMAIL_USER') || 'noreply@ecoblox.com'}>`,
+        from: `"EcoBlox" <${this.configService.get('EMAIL_USER') || 'noreply@ecoblox.com'}>`,
         to,
-        subject: 'Test Email from EcoBlox Academy',
+        subject: 'Test Email from EcoBlox',
         html: '<h1>Email Service is Working!</h1><p>If you received this, your email configuration is correct.</p>',
       });
 

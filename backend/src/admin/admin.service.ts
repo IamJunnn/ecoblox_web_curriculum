@@ -880,11 +880,17 @@ export class AdminService {
       orderBy: { display_order: 'asc' },
     });
 
-    return games.map(game => ({
+    const gamesWithStats = games.map(game => ({
       ...game,
       total_courses: game.courses.length,
       total_students: game.enrollments.length,
     }));
+
+    return {
+      success: true,
+      games: gamesWithStats,
+      count: gamesWithStats.length,
+    };
   }
 
   async getStudentsByGame(gameId: number) {
