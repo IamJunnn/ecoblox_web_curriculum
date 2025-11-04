@@ -56,6 +56,14 @@ export default function StudentLayout({
                 >
                   Leaderboard
                 </Link>
+                <Link
+                  href="/student/chat"
+                  className="text-gray-600 transition-colors"
+                  onMouseOver={(e) => e.currentTarget.style.color = ROLE_COLORS.student.primary}
+                  onMouseOut={(e) => e.currentTarget.style.color = '#4B5563'}
+                >
+                  💬 Chat
+                </Link>
               </div>
             </div>
 

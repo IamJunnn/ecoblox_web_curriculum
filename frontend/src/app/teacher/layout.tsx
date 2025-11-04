@@ -93,6 +93,14 @@ export default function TeacherLayout({
                 >
                   Manage Students
                 </Link>
+                <Link
+                  href="/teacher/chat"
+                  className="text-gray-600 transition-colors flex items-center gap-2"
+                  onMouseOver={(e) => (e.currentTarget.style.color = ROLE_COLORS.teacher.primary)}
+                  onMouseOut={(e) => (e.currentTarget.style.color = '')}
+                >
+                  💬 Chat
+                </Link>
               </div>
             </div>
 
