@@ -8,6 +8,7 @@ import { ROLE_COLORS } from '@/lib/theme'
 import useAuthStore from '@/store/authStore'
 import adminAPI, { Student, Teacher, Game } from '@/lib/api/admin.api'
 import AddStudentModal from '@/components/modals/AddStudentModal'
+import ConfirmDialog from '@/components/modals/ConfirmDialog'
 
 function formatLastActive(lastActive: string | null): string {
   if (!lastActive) return 'Never'
@@ -46,6 +47,12 @@ export default function ManageStudents() {
     parent_email: '',
   })
   const [submitting, setSubmitting] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    isOpen: boolean;
+    student?: Student;
+  }>({
+    isOpen: false
+  })
 
   // Check authentication on mount
   useEffect(() => {
@@ -104,10 +111,11 @@ export default function ManageStudents() {
 
   const loadGames = async () => {
     try {
-      const gamesData = await adminAPI.getAllGames()
-      setGames(gamesData)
+      const gamesData: any = await adminAPI.getAllGames()
+      setGames(Array.isArray(gamesData) ? gamesData : gamesData.games || [])
     } catch (err: any) {
       console.error('Error loading games:', err)
+      setGames([]) // Set empty array on error
     }
   }
 
@@ -165,20 +173,25 @@ export default function ManageStudents() {
     }
   }
 
-  const handleDeleteStudent = async (student: Student) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete ${student.name}?\n\nThis will permanently delete:\n- Student account\n- All progress data\n- All earned badges\n\nThis action cannot be undone.`
-    )
+  const handleDeleteStudent = (student: Student) => {
+    setDeleteConfirm({
+      isOpen: true,
+      student
+    })
+  }
 
-    if (!confirmed) return
+  const confirmDeleteStudent = async () => {
+    if (!deleteConfirm.student) return
 
     try {
-      await adminAPI.deleteStudent(student.id)
+      await adminAPI.deleteStudent(deleteConfirm.student.id)
+      setDeleteConfirm({ isOpen: false })
       // Reload students after deletion
       await loadStudents()
     } catch (err: any) {
       console.error('Error deleting student:', err)
       alert(err.response?.data?.message || 'Failed to delete student')
+      setDeleteConfirm({ isOpen: false })
     }
   }
 
@@ -609,6 +622,24 @@ export default function ManageStudents() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        title={`Delete student "${deleteConfirm.student?.name}"?`}
+        message="This will permanently delete:"
+        details={[
+          'Student account',
+          'All progress data',
+          'All earned badges'
+        ]}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        icon="alert"
+        onConfirm={confirmDeleteStudent}
+        onCancel={() => setDeleteConfirm({ isOpen: false })}
+      />
     </div>
   )
 }

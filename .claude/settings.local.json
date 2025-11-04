@@ -63,7 +63,16 @@
       "Bash(cmd /c kill-all-servers.bat)",
       "Bash(PORT=3400 npm run start:swc:*)",
       "Bash(PORT=3000 npm run dev:*)",
-      "Bash(ping:*)"
+      "Bash(ping:*)",
+      "Bash(psql:*)",
+      "Bash(PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=\"reset the data pro it is already reset and I am not sure what to reset more\" npx prisma migrate reset --force)",
+      "Bash(del test-admin-login.js test-student-login.js test-teacher-login.js)",
+      "Bash(del update-course3-steps.js)",
+      "Bash(del check-course-steps-debug.js count-courses.js find-johnny-smith.js analyze-progress-bug.js test-admin-api.js)",
+      "Bash(del backendcheck-johnny-progress.js backendfix-johnny-progress.js backendfix-johnny-xp.js)",
+      "Bash(git checkout:*)",
+      "Bash(del backendcheck-courses-quick.js backendtest-leaderboard-api.js backendadd-test-student.js backendcheck-game-enrollments.js)",
+      "Bash(del backenddebug-student-progress.js backendtest-admin-api-progress.js)"
     ],
     "deny": [],
     "ask": []

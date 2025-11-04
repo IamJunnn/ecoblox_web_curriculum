@@ -40,14 +40,35 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto) {
+    console.log('\n========== LOGIN ATTEMPT ==========');
+    console.log('[AuthService] Login request received:', {
+      email: loginDto.email,
+      requestedRole: loginDto.role,
+      timestamp: new Date().toISOString()
+    });
+
     const user = await this.validateUser(loginDto.email, loginDto.password);
 
     if (!user) {
+      console.log('[AuthService] ❌ Login FAILED - Invalid credentials for:', loginDto.email);
+      console.log('===================================\n');
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    console.log('[AuthService] ✓ User validated:', {
+      userId: user.id,
+      email: user.email,
+      actualRole: user.role,
+      name: user.name
+    });
+
     // Verify role if specified
     if (loginDto.role && user.role !== loginDto.role) {
+      console.log('[AuthService] ❌ Role mismatch:', {
+        requestedRole: loginDto.role,
+        actualRole: user.role
+      });
+      console.log('===================================\n');
       throw new UnauthorizedException(
         `This account is not registered as a ${loginDto.role}`,
       );
@@ -61,9 +82,19 @@ export class AuthService {
       class_code: user.class_code,
     };
 
+    const accessToken = this.jwtService.sign(payload);
+
+    console.log('[AuthService] ✓ JWT token generated');
+    console.log('[AuthService] ✓ Login SUCCESS for:', {
+      email: user.email,
+      role: user.role,
+      userId: user.id
+    });
+    console.log('===================================\n');
+
     return {
       success: true,
-      access_token: this.jwtService.sign(payload),
+      access_token: accessToken,
       user: {
         id: user.id,
         name: user.name,

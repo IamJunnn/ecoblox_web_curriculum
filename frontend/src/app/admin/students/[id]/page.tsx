@@ -54,6 +54,7 @@ export default function StudentDetailPage() {
   })
   const [teachers, setTeachers] = useState<Array<{ id: number; name: string; email: string }>>([])
   const [loadingTeachers, setLoadingTeachers] = useState(false)
+  const [resetConfirmModal, setResetConfirmModal] = useState(false)
 
   // Fetch student data on mount
   useEffect(() => {
@@ -200,18 +201,21 @@ export default function StudentDetailPage() {
 
   const handleResetProgress = async () => {
     if (!student) return
+    setResetConfirmModal(true)
+  }
 
-    if (!confirm('Reset all progress for this student? This action cannot be undone.')) {
-      return
-    }
+  const confirmResetProgress = async () => {
+    if (!student) return
 
     try {
       await adminAPI.resetStudentProgress(student.id)
+      setResetConfirmModal(false)
       // Refresh student data
       window.location.reload()
     } catch (err) {
       console.error('Error resetting progress:', err)
       alert('Failed to reset progress')
+      setResetConfirmModal(false)
     }
   }
 
@@ -371,7 +375,11 @@ export default function StudentDetailPage() {
             <div className="p-6">
               <div className="space-y-4">
                 {courses.map((course) => (
-                  <div key={course.id} className="border border-gray-200 rounded-lg p-4">
+                  <Link
+                    key={course.id}
+                    href={`/courses/${course.id}`}
+                    className="block border border-gray-200 rounded-lg p-4 hover:border-gray-400 hover:shadow-md transition-all cursor-pointer"
+                  >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <BookOpen className="w-5 h-5" color={ROLE_COLORS.student.primary} />
@@ -409,7 +417,7 @@ export default function StudentDetailPage() {
                       <span>{course.xp} XP earned</span>
                       <span>Last accessed: {course.lastAccessed}</span>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </div>
@@ -622,6 +630,63 @@ export default function StudentDetailPage() {
                 <Save className="w-4 h-4" />
                 Save Changes
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Progress Confirmation Modal */}
+      {resetConfirmModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+            {/* Header */}
+            <div
+              className="px-6 py-5 border-b"
+              style={{ backgroundColor: ROLE_COLORS.student.light }}
+            >
+              <h3 className="text-2xl font-bold" style={{ color: ROLE_COLORS.student.dark }}>
+                Reset Student Progress?
+              </h3>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-6">
+              <div className="mb-6">
+                <p className="text-gray-700 mb-4">
+                  Are you sure you want to reset all progress for <span className="font-bold">{student?.name}</span>?
+                </p>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <p className="text-sm text-red-800 font-medium mb-2">
+                    This will permanently delete:
+                  </p>
+                  <ul className="text-sm text-red-700 space-y-1 ml-4">
+                    <li>• All completed steps and quizzes</li>
+                    <li>• All earned badges</li>
+                    <li>• All XP progress</li>
+                    <li>• All course completion status</li>
+                  </ul>
+                  <p className="text-sm text-red-800 font-bold mt-3">
+                    ⚠️ This action cannot be undone!
+                  </p>
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setResetConfirmModal(false)}
+                  className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmResetProgress}
+                  className="flex-1 px-4 py-3 rounded-lg text-white font-bold transition-colors hover:opacity-90"
+                  style={{ backgroundColor: ROLE_COLORS.student.primary }}
+                >
+                  Yes, Reset Progress
+                </button>
+              </div>
             </div>
           </div>
         </div>

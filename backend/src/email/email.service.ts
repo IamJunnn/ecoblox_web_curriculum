@@ -265,7 +265,7 @@ export class EmailService {
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     .header {
-      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
       color: white;
       padding: 30px;
       text-align: center;
@@ -274,8 +274,8 @@ export class EmailService {
       padding: 30px;
     }
     .credentials-box {
-      background: #f0f9ff;
-      border: 2px solid #3b82f6;
+      background: #f0fdf4;
+      border: 2px solid #10b981;
       border-radius: 8px;
       padding: 20px;
       margin: 20px 0;
@@ -285,7 +285,7 @@ export class EmailService {
     }
     .credential-label {
       font-weight: bold;
-      color: #1e40af;
+      color: #047857;
       display: block;
       margin-bottom: 5px;
     }
@@ -295,19 +295,19 @@ export class EmailService {
       background: white;
       padding: 10px;
       border-radius: 5px;
-      border: 1px solid #bfdbfe;
+      border: 1px solid #bbf7d0;
       display: block;
     }
     .pin-value {
       font-size: 32px;
       font-weight: bold;
-      color: #2563eb;
+      color: #059669;
       letter-spacing: 4px;
     }
     .button {
       display: inline-block;
       padding: 15px 40px;
-      background: #3b82f6;
+      background: #10b981;
       color: white !important;
       text-decoration: none;
       border-radius: 5px;
@@ -316,7 +316,7 @@ export class EmailService {
       font-size: 16px;
     }
     .instructions {
-      background: #fff7ed;
+      background: #fef3c7;
       border-left: 4px solid #f59e0b;
       padding: 15px;
       margin: 20px 0;
@@ -341,7 +341,7 @@ export class EmailService {
       <p>Your student account has been created! We're excited to have you start your coding journey with us.</p>
 
       <div class="credentials-box">
-        <h3 style="margin-top: 0; color: #1e40af;">Your Login Credentials</h3>
+        <h3 style="margin-top: 0; color: #047857;">Your Login Credentials</h3>
 
         <div class="credential-item">
           <span class="credential-label">Email:</span>
@@ -384,6 +384,234 @@ export class EmailService {
     </div>
     <div class="footer">
       <p>This email was sent to ${email}. If you didn't expect this email, please contact your teacher.</p>
+      <p>&copy; ${new Date().getFullYear()} EcoBlox. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>
+    `.trim();
+  }
+
+  /**
+   * Send parent notification email when student account is created
+   */
+  async sendParentNotification(
+    parentEmail: string,
+    parentName: string,
+    studentName: string,
+    studentEmail: string,
+    pin: string,
+  ) {
+    const subject = `${studentName}'s EcoBlox Account Created - Login Details Inside`;
+    const loginUrl = `${this.configService.get('FRONTEND_URL') || 'http://localhost:3000'}`;
+    const html = this.getParentNotificationTemplate(
+      parentName,
+      studentName,
+      studentEmail,
+      pin,
+      loginUrl,
+    );
+
+    try {
+      const info = await this.transporter.sendMail({
+        from: `"EcoBlox" <${this.configService.get('EMAIL_USER') || 'noreply@ecoblox.com'}>`,
+        to: parentEmail,
+        subject,
+        html,
+      });
+
+      this.logger.log(`Parent notification email sent to ${parentEmail}`);
+      this.logger.debug(`Message ID: ${info.messageId}`);
+
+      return {
+        success: true,
+        messageId: info.messageId,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to send email to ${parentEmail}:`, error);
+
+      // In development, log the email content instead
+      this.logger.log('=== PARENT EMAIL CONTENT (Dev Mode) ===');
+      this.logger.log(`To: ${parentEmail}`);
+      this.logger.log(`Subject: ${subject}`);
+      this.logger.log(`Student Email: ${studentEmail}`);
+      this.logger.log(`PIN: ${pin}`);
+      this.logger.log(`Login URL: ${loginUrl}`);
+      this.logger.log('========================================');
+
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * HTML template for parent notification email
+   */
+  private getParentNotificationTemplate(
+    parentName: string,
+    studentName: string,
+    studentEmail: string,
+    pin: string,
+    loginUrl: string,
+  ): string {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 20px auto;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .header {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+    .content {
+      padding: 30px;
+    }
+    .credentials-box {
+      background: #f0fdf4;
+      border: 2px solid #10b981;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .credential-item {
+      margin: 15px 0;
+    }
+    .credential-label {
+      font-weight: bold;
+      color: #047857;
+      display: block;
+      margin-bottom: 5px;
+    }
+    .credential-value {
+      font-size: 18px;
+      font-family: 'Courier New', monospace;
+      background: white;
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #bbf7d0;
+      display: block;
+    }
+    .pin-value {
+      font-size: 32px;
+      font-weight: bold;
+      color: #059669;
+      letter-spacing: 4px;
+    }
+    .button {
+      display: inline-block;
+      padding: 15px 40px;
+      background: #10b981;
+      color: white !important;
+      text-decoration: none;
+      border-radius: 5px;
+      margin: 20px 0;
+      font-weight: bold;
+      font-size: 16px;
+    }
+    .instructions {
+      background: #ecfdf5;
+      border-left: 4px solid #10b981;
+      padding: 15px;
+      margin: 20px 0;
+    }
+    .important {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 15px;
+      margin: 20px 0;
+    }
+    .footer {
+      background: #f8f9fa;
+      padding: 20px;
+      text-align: center;
+      font-size: 12px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>👨‍👩‍👧‍👦 EcoBlox Student Account Created</h1>
+    </div>
+    <div class="content">
+      <p>Hello ${parentName || 'Parent/Guardian'},</p>
+
+      <p>A student account has been created for <strong>${studentName}</strong> on EcoBlox, our interactive coding education platform!</p>
+
+      <p>Below are ${studentName}'s login credentials. Please keep this information safe and share it with your student:</p>
+
+      <div class="credentials-box">
+        <h3 style="margin-top: 0; color: #047857;">Login Credentials for ${studentName}</h3>
+
+        <div class="credential-item">
+          <span class="credential-label">Student Email:</span>
+          <span class="credential-value">${studentEmail}</span>
+        </div>
+
+        <div class="credential-item">
+          <span class="credential-label">PIN Code:</span>
+          <span class="credential-value pin-value">${pin}</span>
+        </div>
+      </div>
+
+      <center>
+        <a href="${loginUrl}" class="button">Visit EcoBlox</a>
+      </center>
+
+      <div class="instructions">
+        <h4 style="margin-top: 0;">📝 How Your Student Can Login:</h4>
+        <ol style="margin: 10px 0 0 20px; padding: 0;">
+          <li>Visit: <strong>${loginUrl}</strong></li>
+          <li>Enter the email: <strong>${studentEmail}</strong></li>
+          <li>Enter the 4-digit PIN: <strong>${pin}</strong></li>
+          <li>Start learning and having fun with coding!</li>
+        </ol>
+      </div>
+
+      <div class="important">
+        <h4 style="margin-top: 0;">⚠️ Important - Keep This Safe!</h4>
+        <p style="margin: 5px 0;">Please save these login credentials in a safe place. Your student will need them to access their account and continue their learning journey.</p>
+      </div>
+
+      <p><strong>What ${studentName} Can Do on EcoBlox:</strong></p>
+      <ul>
+        <li>🎮 Learn coding through interactive Roblox game development</li>
+        <li>⚡ Earn XP points by completing coding challenges</li>
+        <li>🏆 Earn badges and compete on class leaderboards</li>
+        <li>📊 Track learning progress in real-time</li>
+        <li>🎯 Build real games while learning programming concepts</li>
+      </ul>
+
+      <p>We're excited to help ${studentName} start this coding adventure! If you have any questions or concerns, please don't hesitate to contact your student's teacher.</p>
+
+      <p>Best regards,<br>The EcoBlox Team</p>
+    </div>
+    <div class="footer">
+      <p>This email was sent regarding ${studentName}'s student account.</p>
+      <p>If you have questions, please contact your student's teacher or administrator.</p>
       <p>&copy; ${new Date().getFullYear()} EcoBlox. All rights reserved.</p>
     </div>
   </div>

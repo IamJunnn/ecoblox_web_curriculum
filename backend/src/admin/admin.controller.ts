@@ -16,7 +16,8 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../common/enums/user-role.enum';
 
 @Controller('admin')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
@@ -52,6 +53,11 @@ export class AdminController {
   @Delete('students/:id')
   async deleteStudent(@Param('id', ParseIntPipe) id: number) {
     return this.adminService.deleteStudent(id);
+  }
+
+  @Post('students/:id/reset-progress')
+  async resetStudentProgress(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.resetStudentProgress(id);
   }
 
   // ============ TEACHER MANAGEMENT ============

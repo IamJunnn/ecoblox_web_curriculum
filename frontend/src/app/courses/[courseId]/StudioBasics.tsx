@@ -33,8 +33,8 @@ interface LevelData {
   }
 }
 
-const XP_PER_STEP = 30
-const XP_PER_QUIZ = 50
+const XP_PER_STEP = 10 // Changed from 30 to match backend XP calculation
+const XP_PER_QUIZ = 0 // Changed from 50 to 0 - quizzes don't give XP, only gate progress
 const STEPS_PER_LEVEL = 4
 
 export default function StudioBasics({ course }: StudioBasicsProps) {
@@ -47,6 +47,19 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
   const [quizCorrectness, setQuizCorrectness] = useState<Record<number, boolean>>({}) // Track if quiz was correct
   const [totalXP, setTotalXP] = useState(0)
   const [showCelebration, setShowCelebration] = useState(false)
+  const [celebrationShown, setCelebrationShown] = useState(() => {
+    // Check if celebration was already shown for this course
+    if (typeof window !== 'undefined' && user) {
+      const key = `celebration_shown_course_${course.id}_user_${user.id}`
+      return localStorage.getItem(key) === 'true'
+    }
+    return false
+  })
+  const [earnedBadge, setEarnedBadge] = useState<{
+    badge_name: string
+    badge_icon: string | null
+    badge_message: string | null
+  } | null>(null)
   const [expandedLevels, setExpandedLevels] = useState<Set<number>>(() => {
     // Load expanded levels from localStorage on initial mount
     if (typeof window !== 'undefined') {
@@ -235,6 +248,13 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
     calculateXP()
   }, [completedSteps, quizCorrectness])
 
+  // Check for completion after loading progress
+  useEffect(() => {
+    if (user && Object.keys(completedSteps).length > 0 && Object.keys(quizCorrectness).length > 0) {
+      checkCourseCompletion(completedSteps, quizCorrectness)
+    }
+  }, [completedSteps, quizCorrectness])
+
   const loadProgress = async () => {
     try {
       if (!user) return
@@ -242,6 +262,12 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
       // Load progress from backend
       const response = await progressAPI.getStudentCourseProgress(user.id, course.id)
       const events = response.progress_events
+
+      // Check if course is already completed (to avoid showing modal again)
+      const alreadyCompleted = events.some((e: any) => e.event_type === 'course_completed')
+      if (alreadyCompleted) {
+        setShowCelebration(false) // Don't show celebration if already completed
+      }
 
       // Process step completion events
       const stepsMap: Record<number, Set<number>> = {}
@@ -373,6 +399,9 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
         }
       }
     }
+
+    // Check if course is fully completed
+    await checkCourseCompletion(newCompletedSteps, quizCorrectness)
   }
 
   const handleQuizAnswer = async (levelNumber: number, answerIndex: number) => {
@@ -407,37 +436,8 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
           }
         })
 
-        // Check if all quizzes completed correctly
-        if (levelNumber === levels.length && isCorrect) {
-          // Use the correctness state instead of comparing shuffled indices
-          const allCorrect = levels.every((level, idx) => {
-            return newCorrectness[idx + 1] === true
-          })
-
-          if (allCorrect) {
-            setShowCelebration(true)
-            // Mark quest as completed
-            await progressAPI.createProgress({
-              student_id: user.id,
-              course_id: course.id,
-              event_type: 'quest_completed',
-              level: levelNumber,
-              data: { all_quizzes_correct: true }
-            })
-            // Mark course as completed to unlock next course
-            await progressAPI.createProgress({
-              student_id: user.id,
-              course_id: course.id,
-              event_type: 'course_completed',
-              level: levelNumber,
-              data: {
-                all_quizzes_correct: true,
-                total_levels: levels.length,
-                completed_at: new Date().toISOString()
-              }
-            })
-          }
-        }
+        // Check if course is fully completed (all steps + all quizzes)
+        await checkCourseCompletion(completedSteps, newCorrectness)
       } catch (error) {
         console.error('Failed to track quiz:', error)
       }
@@ -457,6 +457,68 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
     const newCorrectness = { ...quizCorrectness }
     delete newCorrectness[levelNumber]
     setQuizCorrectness(newCorrectness)
+  }
+
+  const checkCourseCompletion = async (updatedSteps: Record<number, Set<number>>, updatedCorrectness: Record<number, boolean>) => {
+    // Check if ALL steps are completed (6 levels × 4 steps = 24 total)
+    const totalCompletedSteps = Object.values(updatedSteps).reduce((sum, steps) => sum + steps.size, 0)
+    const allStepsComplete = totalCompletedSteps === levels.length * STEPS_PER_LEVEL
+
+    // Check if ALL quizzes are answered correctly
+    const allQuizzesCorrect = levels.every((level) => updatedCorrectness[level.levelNumber] === true)
+
+    console.log('[Completion Check]', {
+      totalCompletedSteps,
+      allStepsComplete,
+      allQuizzesCorrect,
+      showCelebration,
+      updatedCorrectness
+    })
+
+    // If both conditions are met, show celebration and mark course complete
+    if (allStepsComplete && allQuizzesCorrect && user && !showCelebration && !celebrationShown) {
+      console.log('[Completion] Triggering course completion!')
+      try {
+        // Mark quest as completed
+        await progressAPI.createProgress({
+          student_id: user.id,
+          course_id: course.id,
+          event_type: 'quest_completed',
+          level: levels.length,
+          data: { all_steps_completed: true }
+        })
+
+        // Mark course as completed to unlock next course and get badge
+        const response = await progressAPI.createProgress({
+          student_id: user.id,
+          course_id: course.id,
+          event_type: 'course_completed',
+          level: levels.length,
+          data: {
+            all_steps_completed: true,
+            all_quizzes_correct: true,
+            total_levels: levels.length,
+            completed_at: new Date().toISOString()
+          }
+        })
+
+        // Store badge info if returned
+        if (response.badge) {
+          setEarnedBadge(response.badge)
+        }
+
+        // Mark celebration as shown in localStorage
+        if (typeof window !== 'undefined') {
+          const key = `celebration_shown_course_${course.id}_user_${user.id}`
+          localStorage.setItem(key, 'true')
+          setCelebrationShown(true)
+        }
+
+        setShowCelebration(true)
+      } catch (error) {
+        console.error('Failed to mark course as completed:', error)
+      }
+    }
   }
 
   const toggleLevel = (levelNumber: number) => {
@@ -635,22 +697,42 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
         {showCelebration && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center">
+              {/* Trophy Icon */}
               <div className="mb-6">
                 <Trophy className="w-20 h-20 mx-auto" color={ROLE_COLORS.student.primary} />
               </div>
+
+              {/* Completion Message */}
               <h2 className="text-3xl font-bold mb-4" style={{ color: ROLE_COLORS.student.primary }}>
                 Course Complete! 🎉
               </h2>
               <p className="text-gray-600 mb-2 text-lg">
-                Congratulations! You've mastered Studio Basics!
+                Congratulations! You've mastered {course.title}!
               </p>
+
+              {/* Badge Award */}
+              {earnedBadge && (
+                <div className="my-6 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border-2 border-yellow-300">
+                  <div className="text-5xl mb-2">{earnedBadge.badge_icon || '🏆'}</div>
+                  <h3 className="text-xl font-bold text-yellow-700 mb-1">
+                    {earnedBadge.badge_name}
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    {earnedBadge.badge_message || 'Badge earned!'}
+                  </p>
+                </div>
+              )}
+
+              {/* XP Total */}
               <p className="text-2xl font-bold mb-6" style={{ color: ROLE_COLORS.student.primary }}>
                 Total XP Earned: {totalXP}
               </p>
+
+              {/* Buttons */}
               <div className="space-y-3">
                 <button
                   onClick={() => router.push('/student/dashboard')}
-                  className="w-full px-6 py-3 rounded-lg text-white font-bold text-lg transition"
+                  className="w-full px-6 py-3 rounded-lg text-white font-bold text-lg transition hover:opacity-90"
                   style={{ backgroundColor: ROLE_COLORS.student.primary }}
                 >
                   Back to Dashboard
@@ -659,7 +741,7 @@ export default function StudioBasics({ course }: StudioBasicsProps) {
                   onClick={() => setShowCelebration(false)}
                   className="w-full px-6 py-3 border-2 border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition"
                 >
-                  Close
+                  Continue Exploring
                 </button>
               </div>
             </div>

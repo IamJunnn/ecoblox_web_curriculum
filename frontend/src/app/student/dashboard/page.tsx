@@ -26,6 +26,7 @@ export default function StudentDashboard() {
   const [courseProgress, setCourseProgress] = useState<Record<number, CourseProgress>>({})
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [currentRank, setCurrentRank] = useState<LeaderboardEntry | null>(null)
+  const [gameId, setGameId] = useState<number | undefined>(undefined)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -48,21 +49,36 @@ export default function StudentDashboard() {
     try {
       setLoading(true)
 
-      // Load all data in parallel
-      const [progressData, coursesData, leaderboardData] = await Promise.all([
-        progressAPI.getStudentProgress(user.id),
+      // Load student progress first to get enrolled game
+      const progressData = await progressAPI.getStudentProgress(user.id)
+
+      // Get the active game enrollment
+      const enrollments = progressData.enrollments || []
+      const activeEnrollment = enrollments.find((e: any) => e.is_active)
+      const enrolledGameId = activeEnrollment?.game_id
+
+      // Load courses and leaderboard in parallel
+      const [coursesData, leaderboardData] = await Promise.all([
         coursesAPI.getCourses(),
-        progressAPI.getLeaderboard(user.class_code || 'CLASS2025', 'week', user.id),
+        progressAPI.getLeaderboard(
+          user.class_code || 'CLASS2025',
+          'week',
+          user.id,
+          enrolledGameId
+        ),
       ])
 
       const loadedCourses = coursesData.courses || coursesData || []
-      setCourses(loadedCourses)
+      // Filter to only show courses 1-4 (hide placeholder courses 5-30)
+      const visibleCourses = loadedCourses.filter((course: Course) => course.course_order <= 4)
+      setCourses(visibleCourses)
       setLeaderboard(leaderboardData.leaderboard || [])
       setCurrentRank(leaderboardData.current_student)
+      setGameId(enrolledGameId)
 
       // Calculate progress for each course
       const progressMap: Record<number, CourseProgress> = {}
-      for (const course of loadedCourses) {
+      for (const course of visibleCourses) {
         try {
           const courseProgressData = await progressAPI.getStudentCourseProgress(user.id, course.id)
           const events = courseProgressData.progress_events || []
@@ -91,6 +107,10 @@ export default function StudentDashboard() {
 
           const isCompleted = totalSteps > 0 && completedSteps.size >= totalSteps
           const isInProgress = completedSteps.size > 0 && !isCompleted
+
+          // Calculate progress percentage based on completed steps
+          // For Course 3: 6 levels × 4 steps = 24 total steps
+          // Each step = ~4.17% progress (100 / 24)
           const progressPercentage = totalSteps > 0 ? Math.round((completedSteps.size / totalSteps) * 100) : 0
 
           console.log(`Course ${course.id} (${course.title}):`, {
@@ -118,9 +138,9 @@ export default function StudentDashboard() {
 
       // Calculate overall progress based on completed courses (not steps)
       let completedCoursesCount = 0
-      let totalCoursesCount = loadedCourses.length
+      let totalCoursesCount = visibleCourses.length
 
-      for (const course of loadedCourses) {
+      for (const course of visibleCourses) {
         if (progressMap[course.id] && progressMap[course.id].isCompleted) {
           completedCoursesCount++
           console.log(`[Overall] Course ${course.id} (${course.title}): COMPLETED ✓`)

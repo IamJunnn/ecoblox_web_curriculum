@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -197,4 +197,87 @@ model GameEnrollment {
   @@unique([user_id, game_id])
   @@index([class_code])
   @@map("game_enrollments")
+}
+
+// ============ CHAT SYSTEM ============
+
+// Chat Rooms - Each teacher has rooms for their classes or 1-on-1 with students
+model ChatRoom {
+  id              Int               @id @default(autoincrement())
+  room_type       String            // "teacher_class" (group chat), "direct" (1-on-1)
+  teacher_id      Int               // Teacher who owns this room
+  student_id      Int?              // For direct chats, the student in this room
+  name            String?           // Optional room name (e.g., "Mr. Ben's Class")
+  class_code      String?           // Associated class code (for group chats)
+  last_message_at DateTime?         // For sorting rooms by recent activity
+
+  created_at      DateTime          @default(now())
+  is_active       Boolean           @default(true)
+
+  // Relations
+  messages        ChatMessage[]
+  participants    ChatParticipant[]
+
+  @@unique([teacher_id, student_id]) // One direct room per teacher-student pair
+  @@index([teacher_id])
+  @@index([student_id])
+  @@index([class_code])
+  @@map("chat_rooms")
+}
+
+// Chat Participants - Who's in each room
+model ChatParticipant {
+  id              Int               @id @default(autoincrement())
+  room_id         Int
+  user_id         Int               // Student or Teacher
+
+  // Status
+  joined_at       DateTime          @default(now())
+  last_read_at    DateTime          @default(now()) // For unread count
+  is_muted        Boolean           @default(false)
+
+  // Relations
+  room            ChatRoom          @relation(fields: [room_id], references: [id], onDelete: Cascade)
+
+  @@unique([room_id, user_id])
+  @@index([user_id])
+  @@map("chat_participants")
+}
+
+// Chat Messages
+model ChatMessage {
+  id              Int               @id @default(autoincrement())
+  room_id         Int
+  sender_id       Int               // User ID of sender (teacher or student)
+  sender_name     String            // Cache sender name for faster display
+  sender_role     String            // "teacher" or "student"
+
+  // Message content
+  message         String            // The actual message text
+  message_type    String            @default("text") // "text", "file", "image", "system"
+
+  // Status
+  sent_at         DateTime          @default(now())
+  is_edited       Boolean           @default(false)
+  edited_at       DateTime?
+  is_deleted      Boolean           @default(false)
+
+  // Relations
+  room            ChatRoom          @relation(fields: [room_id], references: [id], onDelete: Cascade)
+
+  @@index([room_id, sent_at])
+  @@index([sender_id])
+  @@map("chat_messages")
+}
+
+// Online Status Tracking
+model OnlineStatus {
+  id              Int               @id @default(autoincrement())
+  user_id         Int               @unique
+  is_online       Boolean           @default(false)
+  last_seen       DateTime          @default(now())
+  socket_id       String?           // Current socket connection ID
+
+  @@index([user_id])
+  @@map("online_status")
 }

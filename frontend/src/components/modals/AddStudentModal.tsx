@@ -39,7 +39,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, role }: Ad
     try {
       // Load games for both admin and teacher
       const gamesResponse = await adminAPI.getAllGames()
-      setGames(gamesResponse.games || [])
+      setGames(Array.isArray(gamesResponse) ? gamesResponse : gamesResponse.games || [])
 
       // Only load teachers for admin
       if (role === 'admin') {

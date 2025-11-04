@@ -236,6 +236,12 @@ export class ProgressService {
       },
       progress_events: progressEvents,
       badges: badges,
+      enrollments: enrollments.map(e => ({
+        id: e.id,
+        game_id: e.game_id,
+        game_name: e.game.name,
+        is_active: e.is_active,
+      })),
     };
   }
 
@@ -280,16 +286,36 @@ export class ProgressService {
   }
 
   // Get leaderboard for a class
-  async getLeaderboard(classCode: string, period: string = 'all', studentId?: number) {
-    // Get students in this class
-    const students = await this.prisma.user.findMany({
-      where: {
-        role: 'student',
-        class_codes: {
-          contains: classCode,
+  async getLeaderboard(classCode: string, period: string = 'all', studentId?: number, gameId?: number) {
+    // Get students enrolled in the same game
+    let students;
+
+    if (gameId) {
+      // Filter by game enrollment
+      const enrollments = await this.prisma.gameEnrollment.findMany({
+        where: {
+          game_id: gameId,
+          is_active: true,
         },
-      },
-    });
+        include: {
+          user: true,
+        },
+      });
+
+      students = enrollments
+        .filter(e => e.user.role === 'student')
+        .map(e => e.user);
+    } else {
+      // Fallback: Get students in this class
+      students = await this.prisma.user.findMany({
+        where: {
+          role: 'student',
+          class_codes: {
+            contains: classCode,
+          },
+        },
+      });
+    }
 
     // Calculate XP for each student
     const leaderboardData = await Promise.all(

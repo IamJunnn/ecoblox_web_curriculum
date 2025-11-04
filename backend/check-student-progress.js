@@ -4,7 +4,12 @@ const prisma = new PrismaClient();
 async function checkStudentProgress() {
   try {
     const student = await prisma.user.findFirst({
-      where: { email: 'junson@launchwith.co' },
+      where: {
+        OR: [
+          { email: 'junson@launchwith.co' },
+          { name: { contains: 'Johnny' } }
+        ]
+      },
       include: {
         game_enrollments: {
           include: {
@@ -97,6 +102,48 @@ async function checkStudentProgress() {
 
     const adminProgress = totalStepsPossible > 0 ? Math.round((totalStepsCompleted / totalStepsPossible) * 100) : 0;
     console.log('=== Overall Progress (Admin Method - OLD): ' + adminProgress + '% ===\n');
+
+    // Check Course 3 specific details
+    console.log('=== COURSE 3 (Studio Basics) DETAILS ===');
+    const course3Events = await prisma.progressEvent.findMany({
+      where: {
+        user_id: student.id,
+        course_id: 10 // Course 3 ID
+      },
+      orderBy: { timestamp: 'desc' }
+    });
+
+    const eventTypes = {};
+    course3Events.forEach(e => {
+      eventTypes[e.event_type] = (eventTypes[e.event_type] || 0) + 1;
+    });
+
+    for (const [type, count] of Object.entries(eventTypes)) {
+      console.log(`  ${type}: ${count}`);
+    }
+
+    // Check for course_completed event
+    const completionEvent = course3Events.find(e => e.event_type === 'course_completed');
+    console.log(`\nCourse 3 completed? ${completionEvent ? 'YES' : 'NO'}`);
+    if (completionEvent) {
+      console.log(`  Completed at: ${completionEvent.timestamp.toISOString()}`);
+      console.log(`  Data: ${completionEvent.data}`);
+    }
+
+    // Check badges
+    console.log('\n=== BADGES ===');
+    const badges = await prisma.studentBadge.findMany({
+      where: { user_id: student.id },
+      include: { course: true }
+    });
+
+    if (badges.length === 0) {
+      console.log('No badges earned');
+    } else {
+      badges.forEach(b => {
+        console.log(`  ✓ ${b.badge_name} (${b.course.title})`);
+      });
+    }
 
     await prisma.$disconnect();
   } catch (error) {

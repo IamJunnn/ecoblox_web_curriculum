@@ -61,10 +61,12 @@ const progressAPI = {
   getLeaderboard: async (
     classCode: string,
     period: 'all' | 'week' | 'month' = 'all',
-    studentId?: number
+    studentId?: number,
+    gameId?: number
   ) => {
     const params = new URLSearchParams({
       period,
+      ...(gameId && { gameId: gameId.toString() }),
       ...(studentId && { studentId: studentId.toString() }),
     })
     const response = await apiClient.get(

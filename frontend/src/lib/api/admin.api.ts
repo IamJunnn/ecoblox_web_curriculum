@@ -102,6 +102,22 @@ export interface Teacher {
   student_count: number
 }
 
+export interface TeacherDetail {
+  id: number
+  name: string
+  email: string
+  class_codes: Array<{ code: string; game: { name: string } }>
+  is_verified: boolean
+  created_at: string
+  last_active: string
+  students: Array<{
+    id: number
+    name: string
+    email: string
+    created_at: string
+  }>
+}
+
 export interface GetAllTeachersResponse {
   success: boolean
   teachers: Teacher[]
@@ -236,6 +252,14 @@ class AdminAPI {
    */
   async getAllTeachers(): Promise<GetAllTeachersResponse> {
     const response = await apiClient.get<GetAllTeachersResponse>('/admin/teachers')
+    return response.data
+  }
+
+  /**
+   * Get teacher by ID with full details
+   */
+  async getTeacher(id: number): Promise<TeacherDetail> {
+    const response = await apiClient.get<TeacherDetail>(`/admin/teachers/${id}`)
     return response.data
   }
 

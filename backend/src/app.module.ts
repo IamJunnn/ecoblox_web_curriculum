@@ -8,6 +8,7 @@ import { TeacherModule } from './teacher/teacher.module';
 import { AdminModule } from './admin/admin.module';
 import { CoursesModule } from './courses/courses.module';
 import { ProgressModule } from './progress/progress.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { ProgressModule } from './progress/progress.module';
     AdminModule,
     CoursesModule,
     ProgressModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],

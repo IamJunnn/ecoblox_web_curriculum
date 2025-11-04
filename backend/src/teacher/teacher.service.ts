@@ -153,6 +153,8 @@ export class TeacherService {
             course_id: true,
             event_type: true,
             step_number: true,
+            level_number: true,
+            is_checked: true,
             timestamp: true
           }
         },
@@ -172,7 +174,9 @@ export class TeacherService {
       const classCodes = student.class_codes ? JSON.parse(student.class_codes) : [];
 
       // Calculate progress stats
-      const completedSteps = student.progress_events.filter(e => e.event_type === 'step_completed').length;
+      const completedSteps = student.progress_events.filter(e =>
+        e.event_type === 'step_checked' && e.is_checked !== false
+      ).length;
       const completedCourses = student.progress_events.filter(e => e.event_type === 'course_completed').length;
       const totalBadges = student.badges.length;
 
@@ -227,7 +231,7 @@ export class TeacherService {
 
         const courseProgress = courses.map(course => {
           const steps = student.progress_events.filter(
-            e => e.course_id === course.id && e.event_type === 'step_completed'
+            e => e.course_id === course.id && e.event_type === 'step_checked' && e.is_checked !== false
           );
           const isCompleted = student.progress_events.some(
             e => e.course_id === course.id && e.event_type === 'course_completed'
@@ -278,6 +282,42 @@ export class TeacherService {
       },
       orderBy: { created_at: 'desc' }
     });
+  }
+
+  /**
+   * Reset student progress
+   */
+  async resetStudentProgress(teacherId: number, studentId: number) {
+    // Verify student belongs to teacher
+    const student = await this.prisma.user.findFirst({
+      where: {
+        id: studentId,
+        created_by_teacher_id: teacherId,
+        role: 'student'
+      }
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found or does not belong to you');
+    }
+
+    // Delete all progress-related data in a transaction
+    await this.prisma.$transaction(async (prisma) => {
+      // Delete all progress events
+      await prisma.progressEvent.deleteMany({
+        where: { user_id: studentId },
+      });
+
+      // Delete all badges
+      await prisma.studentBadge.deleteMany({
+        where: { user_id: studentId },
+      });
+    });
+
+    return {
+      success: true,
+      message: `Progress reset successfully for student ${student.name}`,
+    };
   }
 
   /**

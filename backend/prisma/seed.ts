@@ -68,7 +68,7 @@ async function main() {
       course_order: 3,
       title: 'Studio Basics',
       description: 'Learn the Roblox Studio interface and basic tools',
-      total_steps: 8,
+      total_steps: 24, // 6 levels × 4 steps per level = 24 total steps
       badge_name: 'Explorer Badge',
       badge_icon: '🔍',
       badge_message: 'You know your way around Roblox Studio!',
@@ -138,11 +138,11 @@ async function main() {
   }
 
   // ============ Create default Admin account ============
-  const adminPassword = await bcrypt.hash('admin123', 10);
+  const adminPassword = await bcrypt.hash('o}`ZN4A%Qd3>5j', 10);
   const admin = await prisma.user.create({
     data: {
       name: 'Admin User',
-      email: 'admin@ecoblox.com',
+      email: 'admin@ecoblox.build',
       password_hash: adminPassword,
       role: 'admin',
       is_verified: true,
@@ -280,7 +280,7 @@ async function main() {
   console.log('- 2 Class codes generated');
 
   console.log('\n🔐 Login Credentials:');
-  console.log('Admin: admin@ecoblox.com / admin123');
+  console.log('Admin: admin@ecoblox.build / o}`ZN4A%Qd3>5j');
   console.log('Teacher 1: benjamin@school.edu / teacher123');
   console.log('Teacher 2: sarah@school.edu / teacher123');
   console.log('Students: Use PIN codes (1234, 5678, 9012) or student123');

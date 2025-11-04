@@ -7,6 +7,7 @@ import { BookOpen, Plus, Search, Mail, X, Send, Users, CheckCircle, Clock } from
 import { ROLE_COLORS } from '@/lib/theme'
 import useAuthStore from '@/store/authStore'
 import adminAPI, { type Teacher, type CreateTeacherDto } from '@/lib/api/admin.api'
+import ConfirmDialog from '@/components/modals/ConfirmDialog'
 
 export default function ManageTeachers() {
   const router = useRouter()
@@ -16,6 +17,14 @@ export default function ManageTeachers() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    isOpen: boolean;
+    teacherId?: number;
+    teacherName?: string;
+    students?: Array<{ id: number; name: string; email: string; created_at: string }>
+  }>({
+    isOpen: false
+  })
 
   const [formData, setFormData] = useState<CreateTeacherDto>({
     name: '',
@@ -110,19 +119,36 @@ export default function ManageTeachers() {
   }
 
   const handleDeleteTeacher = async (id: number, name: string) => {
-    if (!confirm(`Are you sure you want to delete teacher "${name}"?\n\nThis action cannot be undone.`)) {
-      return
+    try {
+      // Fetch teacher details to get student list
+      const teacher = await adminAPI.getTeacher(id)
+
+      setDeleteConfirm({
+        isOpen: true,
+        teacherId: id,
+        teacherName: name,
+        students: teacher.students
+      })
+    } catch (error: any) {
+      console.error('Error fetching teacher details:', error)
+      alert('Failed to fetch teacher details')
     }
+  }
+
+  const confirmDeleteTeacher = async () => {
+    if (!deleteConfirm.teacherId) return
 
     try {
-      await adminAPI.deleteTeacher(id)
+      await adminAPI.deleteTeacher(deleteConfirm.teacherId)
       alert('Teacher deleted successfully')
+      setDeleteConfirm({ isOpen: false })
       // Refresh teachers list
       fetchTeachers()
     } catch (error: any) {
       console.error('Error deleting teacher:', error)
       const errorMessage = error.response?.data?.message || 'Failed to delete teacher'
       alert(errorMessage)
+      setDeleteConfirm({ isOpen: false })
     }
   }
 
@@ -450,6 +476,29 @@ export default function ManageTeachers() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        title={
+          deleteConfirm.students && deleteConfirm.students.length > 0
+            ? `Cannot delete teacher "${deleteConfirm.teacherName}"`
+            : `Delete teacher "${deleteConfirm.teacherName}"?`
+        }
+        message={
+          deleteConfirm.students && deleteConfirm.students.length > 0
+            ? `This teacher has ${deleteConfirm.students.length} ${deleteConfirm.students.length === 1 ? 'student' : 'students'}. Please reassign or remove the students first:`
+            : `This action cannot be undone.`
+        }
+        details={deleteConfirm.students?.map(s => s.name) || []}
+        confirmText="OK"
+        cancelText={deleteConfirm.students && deleteConfirm.students.length > 0 ? "Close" : "Cancel"}
+        variant="warning"
+        icon="warning"
+        showConfirmButton={!deleteConfirm.students || deleteConfirm.students.length === 0}
+        onConfirm={confirmDeleteTeacher}
+        onCancel={() => setDeleteConfirm({ isOpen: false })}
+      />
     </div>
   )
 }

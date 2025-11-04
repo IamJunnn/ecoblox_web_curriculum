@@ -134,6 +134,17 @@ export class TeacherController {
   }
 
   /**
+   * Reset student progress
+   */
+  @Post('students/:studentId/reset-progress')
+  async resetStudentProgress(
+    @Request() req,
+    @Param('studentId', ParseIntPipe) studentId: number
+  ) {
+    return this.teacherService.resetStudentProgress(req.user.id, studentId);
+  }
+
+  /**
    * Unlock a game for a student
    */
   @Post('students/:studentId/unlock-game')

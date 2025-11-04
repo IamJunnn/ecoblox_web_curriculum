@@ -161,13 +161,15 @@ function StudentLoginForm() {
 
     try {
       await studentLogin(email, pin)
+      console.log('Student login successful, redirecting...')
       // Clear the saved tab on successful login
       localStorage.removeItem('loginTab')
-      // Small delay to ensure cookies are set before redirect
-      await new Promise(resolve => setTimeout(resolve, 100))
-      // Use window.location for hard redirect to ensure cookies are set
+      // Longer delay to ensure cookies are fully written
+      await new Promise(resolve => setTimeout(resolve, 300))
+      // Use window.location for hard redirect
       window.location.href = '/student/dashboard'
     } catch (error: any) {
+      console.error('Student login error:', error)
       setError(error.response?.data?.message || 'Invalid email or PIN. Please try again.')
       setLoading(false)
     }
@@ -251,13 +253,15 @@ function TeacherLoginForm() {
 
     try {
       await login(email, password, UserRole.TEACHER)
+      console.log('Teacher login successful, redirecting...')
       // Clear the saved tab on successful login
       localStorage.removeItem('loginTab')
-      // Small delay to ensure cookies are set before redirect
-      await new Promise(resolve => setTimeout(resolve, 100))
-      // Use window.location for hard redirect to ensure cookies are set
+      // Longer delay to ensure cookies are fully written
+      await new Promise(resolve => setTimeout(resolve, 300))
+      // Use window.location for hard redirect
       window.location.href = '/teacher/dashboard'
     } catch (error: any) {
+      console.error('Teacher login error:', error)
       setError(error.response?.data?.message || 'Invalid credentials. Please try again.')
       setLoading(false)
     }
@@ -333,17 +337,49 @@ function AdminLoginForm() {
     setError(null)
     setLoading(true)
 
+    console.log('\n🔐 ========== ADMIN LOGIN FLOW START ==========')
+    console.log('[AdminLogin] Form submitted with email:', email)
+    console.log('[AdminLogin] Timestamp:', new Date().toISOString())
+
     try {
+      console.log('[AdminLogin] Calling authStore.login()...')
       await login(email, password, UserRole.ADMIN)
+
+      console.log('[AdminLogin] ✓ Login successful!')
+      console.log('[AdminLogin] Checking localStorage...')
+      const token = localStorage.getItem('access_token')
+      const user = localStorage.getItem('user')
+      console.log('[AdminLogin] Token in localStorage:', token ? 'EXISTS' : 'MISSING')
+      console.log('[AdminLogin] User in localStorage:', user ? JSON.parse(user) : 'MISSING')
+
+      console.log('[AdminLogin] Checking cookies...')
+      const allCookies = document.cookie
+      console.log('[AdminLogin] All cookies:', allCookies)
+      const hasAccessToken = allCookies.includes('access_token')
+      const hasUserRole = allCookies.includes('user_role')
+      console.log('[AdminLogin] Has access_token cookie:', hasAccessToken)
+      console.log('[AdminLogin] Has user_role cookie:', hasUserRole)
+
       // Clear the saved tab on successful login
       localStorage.removeItem('loginTab')
-      // Small delay to ensure cookies are set before redirect
-      await new Promise(resolve => setTimeout(resolve, 100))
+      console.log('[AdminLogin] Cleared loginTab from localStorage')
+
+      // Longer delay to ensure cookies are fully written
+      console.log('[AdminLogin] Waiting 300ms for cookies to be set...')
+      await new Promise(resolve => setTimeout(resolve, 300))
+
+      console.log('[AdminLogin] Re-checking cookies after delay...')
+      console.log('[AdminLogin] Cookies:', document.cookie)
+
+      console.log('[AdminLogin] 🚀 Redirecting to /admin/dashboard...')
       // Use window.location for hard redirect
       window.location.href = '/admin/dashboard'
     } catch (error: any) {
+      console.error('[AdminLogin] ❌ Login error:', error)
+      console.error('[AdminLogin] Error details:', error.response?.data || error.message)
       setError(error.response?.data?.message || 'Invalid credentials. Please try again.')
       setLoading(false)
+      console.log('========== ADMIN LOGIN FLOW END (ERROR) ==========\n')
     }
   }
 
@@ -397,7 +433,7 @@ function AdminLoginForm() {
       </button>
 
       <p className="text-center text-sm text-gray-500">
-        Default: admin@ecoblox.build / admin123
+        Admin: admin@ecoblox.build
       </p>
     </form>
   )

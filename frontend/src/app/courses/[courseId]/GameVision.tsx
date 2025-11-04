@@ -14,13 +14,16 @@ interface Course {
   title: string
   description: string
   total_levels: number
+  total_steps?: number
+  url?: string
 }
 
 interface GameVisionProps {
   course: Course
 }
 
-const GAME_URL = 'https://www.roblox.com/games/135558747171052/EcoBlox-Team-1'
+// Default game URL (fallback if not provided in course data)
+const DEFAULT_GAME_URL = 'https://www.roblox.com/games/135558747171052/EcoBlox-Team-1'
 
 const quizQuestions = [
   {
@@ -61,9 +64,9 @@ const quizQuestions = [
 export default function GameVision({ course }: GameVisionProps) {
   const router = useRouter()
   const { user } = useAuthStore()
-  const [hasPlayedGame, setHasPlayedGame] = useState(false)
+  const [currentStep, setCurrentStep] = useState(0) // 0=game, 1=q1, 2=q2, 3=q3
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set())
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>({})
-  const [showResults, setShowResults] = useState(false)
   const [showCelebration, setShowCelebration] = useState(false)
 
   useEffect(() => {
@@ -79,22 +82,39 @@ export default function GameVision({ course }: GameVisionProps) {
       const response = await progressAPI.getStudentCourseProgress(user.id, course.id)
       const events = response.progress_events || []
 
-      // Check if game has been played
-      const gamePlayedEvent = events.find((e: any) =>
-        e.event_type === 'step_checked' && e.level === 1
-      )
-      if (gamePlayedEvent) {
-        setHasPlayedGame(true)
-      }
+      // Load completed steps
+      const completed = new Set<number>()
+      const answers: Record<number, string> = {}
 
-      // Load quiz answers
-      const quizEvent = events.find((e: any) =>
-        e.event_type === 'quiz_answered' && e.level === 1
-      )
-      if (quizEvent) {
-        const data = typeof quizEvent.data === 'string' ? JSON.parse(quizEvent.data) : quizEvent.data
-        setSelectedAnswers(data.answers || {})
-        setShowResults(true)
+      events.forEach((e: any) => {
+        if (e.event_type === 'step_checked' &&
+            e.level === 1 &&
+            e.data?.step !== undefined &&
+            e.is_checked !== false) {
+          completed.add(e.data.step)
+
+          // If it's a question step, load the answer
+          if (e.data.answer) {
+            const questionId = e.data.step // step 1 = question 1, etc.
+            answers[questionId] = e.data.answer
+          }
+        }
+      })
+
+      setCompletedSteps(completed)
+      setSelectedAnswers(answers)
+
+      // Determine current step based on completed steps
+      if (completed.has(3)) {
+        setCurrentStep(3) // All done
+      } else if (completed.has(2)) {
+        setCurrentStep(3) // On question 3
+      } else if (completed.has(1)) {
+        setCurrentStep(2) // On question 2
+      } else if (completed.has(0)) {
+        setCurrentStep(1) // On question 1
+      } else {
+        setCurrentStep(0) // On game play step
       }
     } catch (error) {
       console.error('Failed to load progress:', error)
@@ -102,8 +122,6 @@ export default function GameVision({ course }: GameVisionProps) {
   }
 
   const handleGamePlayed = async () => {
-    setHasPlayedGame(true)
-
     if (user) {
       try {
         await progressAPI.createProgress({
@@ -111,60 +129,50 @@ export default function GameVision({ course }: GameVisionProps) {
           course_id: course.id,
           event_type: 'step_checked',
           level: 1,
-          data: { step: 'game_played' }
+          data: { step: 0 }
         })
+
+        setCompletedSteps(prev => new Set(prev).add(0))
+        setCurrentStep(1) // Move to question 1
       } catch (error) {
         console.error('Failed to track game play:', error)
       }
     }
   }
 
-  const handleAnswerSelect = (questionId: number, answerId: string) => {
-    if (!showResults) {
-      setSelectedAnswers(prev => ({
-        ...prev,
-        [questionId]: answerId
-      }))
-    }
-  }
-
-  const handleSubmitQuiz = async () => {
-    // Check if all questions are answered
-    if (Object.keys(selectedAnswers).length !== quizQuestions.length) {
-      alert('Please answer all questions before submitting!')
+  const handleAnswerSelect = async (questionId: number, answerId: string) => {
+    // Don't allow changing answers once selected
+    if (selectedAnswers[questionId]) {
       return
     }
 
-    setShowResults(true)
+    // Update selected answers
+    setSelectedAnswers(prev => ({ ...prev, [questionId]: answerId }))
 
-    // Calculate score
-    let correct = 0
-    quizQuestions.forEach(q => {
-      if (selectedAnswers[q.id] === q.correctAnswer) {
-        correct++
-      }
-    })
+    // Check if correct
+    const question = quizQuestions.find(q => q.id === questionId)
+    const isCorrect = question && answerId === question.correctAnswer
 
-    const passed = correct === quizQuestions.length
-
-    if (user) {
+    // Save progress to backend
+    if (user && isCorrect) {
       try {
-        // Track quiz completion
+        // Track this step as completed
         await progressAPI.createProgress({
           student_id: user.id,
           course_id: course.id,
-          event_type: 'quiz_answered',
+          event_type: 'step_checked',
           level: 1,
           data: {
-            answers: selectedAnswers,
-            score: correct,
-            total: quizQuestions.length,
-            passed
+            step: questionId, // step 1, 2, or 3
+            answer: answerId,
+            question: question.question
           }
         })
 
-        if (passed) {
-          // Track quest completion
+        setCompletedSteps(prev => new Set(prev).add(questionId))
+
+        // If this was question 3 (last question), complete the quest
+        if (questionId === 3) {
           await progressAPI.createProgress({
             student_id: user.id,
             course_id: course.id,
@@ -176,9 +184,22 @@ export default function GameVision({ course }: GameVisionProps) {
           setShowCelebration(true)
         }
       } catch (error) {
-        console.error('Failed to track quiz:', error)
+        console.error('Failed to track answer:', error)
       }
     }
+  }
+
+  const handleNextQuestion = () => {
+    setCurrentStep(prev => prev + 1)
+  }
+
+  const handleTryAgain = (questionId: number) => {
+    // Clear the selected answer for this question so they can try again
+    setSelectedAnswers(prev => {
+      const newAnswers = { ...prev }
+      delete newAnswers[questionId]
+      return newAnswers
+    })
   }
 
   const calculateScore = () => {
@@ -191,9 +212,15 @@ export default function GameVision({ course }: GameVisionProps) {
     return correct
   }
 
-  const allAnswered = Object.keys(selectedAnswers).length === quizQuestions.length
-  const score = showResults ? calculateScore() : 0
-  const passed = score === quizQuestions.length
+  // Use course URL or fall back to default
+  const gameUrl = course.url || DEFAULT_GAME_URL
+  // Calculate total steps for this course (default to 4 if not provided)
+  const totalSteps = course.total_steps || 4
+
+  // Get current question based on step
+  const currentQuestion = currentStep > 0 && currentStep <= 3 ? quizQuestions[currentStep - 1] : null
+  const questionAnswered = currentQuestion && selectedAnswers[currentQuestion.id] !== undefined
+  const questionCorrect = currentQuestion && selectedAnswers[currentQuestion.id] === currentQuestion.correctAnswer
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -207,9 +234,9 @@ export default function GameVision({ course }: GameVisionProps) {
         <div className="mb-8">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-medium text-gray-600">Level 1: Game Vision & Concept</span>
-            <span className="text-sm text-gray-500">Step 1 of 6</span>
+            <span className="text-sm text-gray-500">Step {currentStep + 1} of {totalSteps}</span>
           </div>
-          <ProgressBar current={1} total={6} />
+          <ProgressBar current={currentStep + 1} total={totalSteps} />
         </div>
 
         {/* Main Content */}
@@ -237,27 +264,27 @@ export default function GameVision({ course }: GameVisionProps) {
             </div>
           </div>
 
-          {/* Play the Game Section */}
-          <div className="mb-8 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-6 border border-purple-200">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Watch & Play</h2>
-            <p className="text-gray-700 mb-4">
-              Spend 5-10 minutes exploring the game to understand what you'll be building!
-            </p>
+          {/* Step 0: Play the Game Section */}
+          {currentStep === 0 && (
+            <div className="mb-8 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-6 border border-purple-200">
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">Watch & Play</h2>
+              <p className="text-gray-700 mb-4">
+                Spend 5-10 minutes exploring the game to understand what you'll be building!
+              </p>
 
-            <div className="flex flex-col sm:flex-row gap-3 mb-4">
-              <a
-                href={GAME_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 px-6 py-3 rounded-lg text-white font-medium transition hover:opacity-90 flex items-center justify-center gap-2"
-                style={{ backgroundColor: ROLE_COLORS.student.primary }}
-                onClick={handleGamePlayed}
-              >
-                <ExternalLink size={20} />
-                Play the Game
-              </a>
+              <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                <a
+                  href={gameUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 px-6 py-3 rounded-lg text-white font-medium transition hover:opacity-90 flex items-center justify-center gap-2"
+                  style={{ backgroundColor: ROLE_COLORS.student.primary }}
+                  onClick={handleGamePlayed}
+                >
+                  <ExternalLink size={20} />
+                  Play the Game
+                </a>
 
-              {!hasPlayedGame && (
                 <button
                   onClick={handleGamePlayed}
                   className="px-6 py-3 rounded-lg border-2 text-gray-700 font-medium hover:bg-gray-50 transition"
@@ -265,95 +292,89 @@ export default function GameVision({ course }: GameVisionProps) {
                 >
                   Mark as Played
                 </button>
-              )}
-            </div>
-
-            {hasPlayedGame && (
-              <div className="flex items-center gap-2 text-green-700">
-                <CheckCircle2 size={20} />
-                <span className="text-sm font-medium">Game played! ✓</span>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Quiz Section */}
-          {hasPlayedGame && (
-            <div className="mb-8">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Check Your Understanding</h2>
+          {/* Steps 1-3: Quiz Questions */}
+          {currentStep >= 1 && currentStep <= 3 && currentQuestion && (
+            <div className="bg-gradient-to-r from-teal-500 to-cyan-500 rounded-lg p-6 text-white">
+              <h4 className="text-2xl font-bold mb-4">🎯 Level 1 Challenge</h4>
+              <p className="text-lg mb-6">Question {currentStep} of 3</p>
 
-              {quizQuestions.map((question, index) => (
-                <div key={question.id} className="mb-6 last:mb-0">
-                  <p className="font-medium text-gray-900 mb-3">
-                    {index + 1}. {question.question}
-                  </p>
+              <div className="mb-6">
+                <p className="text-xl font-semibold mb-4">
+                  {currentQuestion.question}
+                </p>
 
-                  <div className="space-y-2">
-                    {question.options.map(option => {
-                      const isSelected = selectedAnswers[question.id] === option.id
-                      const isCorrect = option.id === question.correctAnswer
-                      const showCorrectAnswer = showResults && isCorrect
-                      const showWrongAnswer = showResults && isSelected && !isCorrect
+                <div className="space-y-3">
+                  {currentQuestion.options.map(option => {
+                    const isSelected = selectedAnswers[currentQuestion.id] === option.id
+                    const isCorrect = option.id === currentQuestion.correctAnswer
+                    const showCorrectAnswer = questionAnswered && isCorrect
+                    const showWrongAnswer = questionAnswered && isSelected && !isCorrect
 
-                      return (
+                    return (
+                      <button
+                        key={option.id}
+                        onClick={() => handleAnswerSelect(currentQuestion.id, option.id)}
+                        disabled={questionAnswered || false}
+                        className={`w-full p-4 rounded-lg text-left font-medium transition ${
+                          showCorrectAnswer
+                            ? 'bg-green-500 text-white'
+                            : showWrongAnswer
+                            ? 'bg-red-500 text-white'
+                            : isSelected
+                            ? 'bg-white/30 text-white'
+                            : 'bg-white/10 hover:bg-white/20 text-white'
+                        } ${questionAnswered ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                      >
+                        {option.text}
+                        {showCorrectAnswer && ' ✓'}
+                        {showWrongAnswer && ' ✗'}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Show immediate feedback */}
+                {questionAnswered && (
+                  <div className="mt-4">
+                    {questionCorrect ? (
+                      <div>
+                        <p className="text-green-200 font-bold text-lg mb-4">
+                          ✓ Correct! Great job!
+                        </p>
+                        {currentStep < 3 && (
+                          <button
+                            onClick={handleNextQuestion}
+                            className="px-6 py-3 bg-white rounded-lg font-bold transition hover:bg-gray-100"
+                            style={{ color: ROLE_COLORS.student.primary }}
+                          >
+                            Next Question →
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-red-200 font-bold text-lg mb-2">
+                          ✗ Incorrect. The correct answer is highlighted above.
+                        </p>
+                        <p className="text-white/90 mb-4">
+                          Review the correct answer and try again!
+                        </p>
                         <button
-                          key={option.id}
-                          onClick={() => handleAnswerSelect(question.id, option.id)}
-                          disabled={showResults}
-                          className={`w-full text-left px-4 py-3 rounded-lg border-2 transition ${
-                            showCorrectAnswer
-                              ? 'border-green-500 bg-green-50'
-                              : showWrongAnswer
-                              ? 'border-red-500 bg-red-50'
-                              : isSelected
-                              ? 'border-blue-500 bg-blue-50'
-                              : 'border-gray-200 hover:border-gray-300'
-                          } ${showResults ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                          onClick={() => handleTryAgain(currentQuestion.id)}
+                          className="px-6 py-3 bg-white rounded-lg font-bold transition hover:bg-gray-100"
+                          style={{ color: ROLE_COLORS.student.primary }}
                         >
-                          <span className="flex items-center gap-2">
-                            <span className="font-medium text-gray-700">{option.id})</span>
-                            <span className={
-                              showCorrectAnswer ? 'text-green-900 font-medium' :
-                              showWrongAnswer ? 'text-red-900' :
-                              isSelected ? 'text-blue-900' :
-                              'text-gray-700'
-                            }>
-                              {option.text}
-                            </span>
-                            {showCorrectAnswer && <span className="ml-auto">✓</span>}
-                          </span>
+                          Try Again
                         </button>
-                      )
-                    })}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
-
-              {!showResults && (
-                <button
-                  onClick={handleSubmitQuiz}
-                  disabled={!allAnswered}
-                  className="w-full mt-6 px-6 py-3 rounded-lg text-white font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: ROLE_COLORS.student.primary }}
-                >
-                  Submit Quiz
-                </button>
-              )}
-
-              {showResults && (
-                <div className={`mt-6 p-4 rounded-lg border-2 ${
-                  passed ? 'bg-green-50 border-green-500' : 'bg-yellow-50 border-yellow-500'
-                }`}>
-                  <p className={`font-semibold mb-2 ${passed ? 'text-green-900' : 'text-yellow-900'}`}>
-                    Score: {score} / {quizQuestions.length}
-                  </p>
-                  <p className={passed ? 'text-green-800' : 'text-yellow-800'}>
-                    {passed
-                      ? '🎉 Perfect! You understand the game concept. Ready for the next level!'
-                      : 'Review the game description and try to understand the key concepts better.'
-                    }
-                  </p>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -367,13 +388,13 @@ export default function GameVision({ course }: GameVisionProps) {
             Back to Dashboard
           </button>
 
-          {passed && (
+          {completedSteps.has(3) && (
             <button
               onClick={() => router.push('/student/dashboard')}
               className="px-6 py-2 rounded-lg text-white font-medium transition"
               style={{ backgroundColor: ROLE_COLORS.student.primary }}
             >
-              Continue to Next Level
+              Complete Course
             </button>
           )}
         </div>

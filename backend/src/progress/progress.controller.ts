@@ -1,8 +1,10 @@
-import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ProgressService } from './progress.service';
 import { CreateProgressDto } from './dto/create-progress.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('api/progress')
+@UseGuards(JwtAuthGuard)
 export class ProgressController {
   constructor(private readonly progressService: ProgressService) {}
 
@@ -40,11 +42,13 @@ export class ProgressController {
     @Param('classCode') classCode: string,
     @Query('period') period?: string,
     @Query('studentId') studentId?: string,
+    @Query('gameId') gameId?: string,
   ) {
     return this.progressService.getLeaderboard(
       classCode,
       period || 'all',
       studentId ? parseInt(studentId) : undefined,
+      gameId ? parseInt(gameId) : undefined,
     );
   }
 

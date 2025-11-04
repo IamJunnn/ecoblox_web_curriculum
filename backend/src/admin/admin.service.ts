@@ -11,6 +11,32 @@ export class AdminService {
     private readonly emailService: EmailService,
   ) {}
 
+  // ============ HELPER METHODS ============
+  private buildCreationMessage(
+    studentEmailSent: boolean,
+    parentEmailSent: boolean,
+    studentEmail: string,
+    parentEmail?: string,
+  ): string {
+    const messages: string[] = ['Student created successfully.'];
+
+    if (studentEmailSent) {
+      messages.push(`Welcome email sent to student (${studentEmail}).`);
+    } else {
+      messages.push(`Failed to send email to student - please manually provide credentials.`);
+    }
+
+    if (parentEmail) {
+      if (parentEmailSent) {
+        messages.push(`Parent notification sent to ${parentEmail}.`);
+      } else {
+        messages.push(`Failed to send parent notification to ${parentEmail}.`);
+      }
+    }
+
+    return messages.join(' ');
+  }
+
   // ============ STUDENT MANAGEMENT ============
   async getAllStudents() {
     const students = await this.prisma.user.findMany({
@@ -32,6 +58,8 @@ export class AdminService {
             course_id: true,
             event_type: true,
             step_number: true,
+            level_number: true,
+            is_checked: true,
             timestamp: true,
           },
         },
@@ -60,7 +88,13 @@ export class AdminService {
     });
 
     // Get all courses for progress calculation
+    // Only include real courses (course_order <= 4), not placeholder courses
     const allCourses = await this.prisma.course.findMany({
+      where: {
+        course_order: {
+          lte: 4,  // Only include courses 1-4 (hide placeholder courses 5-30)
+        },
+      },
       select: {
         id: true,
         total_steps: true,
@@ -93,16 +127,24 @@ export class AdminService {
           gameCourses.forEach(c => enrolledCourses.add(c.id));
         }
 
-        // Count unique steps completed per course
-        const stepsByCourse = new Map<number, Set<number>>();
+        // Count unique CHECKED steps per course (level + step combination)
+        const stepsByCourse = new Map<number, Set<string>>();
         let totalStepsCompleted = 0;
 
         for (const event of student.progress_events) {
-          if (event.event_type === 'step_checked' && event.step_number !== null) {
-            if (!stepsByCourse.has(event.course_id)) {
-              stepsByCourse.set(event.course_id, new Set());
+          if (event.event_type === 'step_checked' &&
+              event.step_number !== null &&
+              event.level_number !== null &&
+              event.is_checked !== false) {  // Only count checked steps (true or null for backward compat)
+            const courseId = event.course_id;
+            const stepKey = `${event.level_number}-${event.step_number}`;
+
+            if (!stepsByCourse.has(courseId)) {
+              stepsByCourse.set(courseId, new Set());
             }
-            stepsByCourse.get(event.course_id)!.add(event.step_number);
+
+            // Add unique level-step combination
+            stepsByCourse.get(courseId)!.add(stepKey);
           }
         }
 
@@ -210,7 +252,13 @@ export class AdminService {
     }
 
     // Calculate progress metrics
+    // Only include real courses (course_order <= 4), not placeholder courses
     const allCourses = await this.prisma.course.findMany({
+      where: {
+        course_order: {
+          lte: 4,  // Only include courses 1-4 (hide placeholder courses 5-30)
+        },
+      },
       select: {
         id: true,
         title: true,
@@ -233,8 +281,13 @@ export class AdminService {
       }
 
       const courseProgress = courseProgressMap.get(event.course_id);
-      if (event.event_type === 'step_checked' && event.step_number !== null) {
-        courseProgress.completedSteps.add(event.step_number);
+      if (event.event_type === 'step_checked' &&
+          event.step_number !== null &&
+          event.level_number !== null &&
+          event.is_checked !== false) {
+        // Use unique level-step combination like in getAllStudents
+        const stepKey = `${event.level_number}-${event.step_number}`;
+        courseProgress.completedSteps.add(stepKey);
       }
       if (event.event_type === 'course_completed') {
         completedCourses.add(event.course_id);
@@ -413,7 +466,7 @@ export class AdminService {
     }
 
     // Send welcome email to student with their login credentials
-    let emailSent = false;
+    let studentEmailSent = false;
     try {
       await this.emailService.sendStudentWelcome(
         student.email,
@@ -421,11 +474,31 @@ export class AdminService {
         finalPinCode,
       );
       console.log(`✅ Welcome email sent to student: ${student.email}`);
-      emailSent = true;
+      studentEmailSent = true;
     } catch (emailError) {
       // Log error but don't fail student creation
       console.error('❌ Failed to send welcome email to student:', emailError);
       // The student is still created successfully, just the email failed
+    }
+
+    // Send notification email to parent if parent_email is provided
+    let parentEmailSent = false;
+    if (parent_email) {
+      try {
+        await this.emailService.sendParentNotification(
+          parent_email,
+          parent_name || 'Parent/Guardian',
+          student.name,
+          student.email,
+          finalPinCode,
+        );
+        console.log(`✅ Parent notification email sent to: ${parent_email}`);
+        parentEmailSent = true;
+      } catch (emailError) {
+        // Log error but don't fail student creation
+        console.error('❌ Failed to send parent notification email:', emailError);
+        // The student is still created successfully, just the email failed
+      }
     }
 
     // Return formatted response with all important info
@@ -438,10 +511,9 @@ export class AdminService {
         pin: finalPinCode,
         createdAt: student.created_at.toISOString(),
       },
-      emailSent,
-      message: emailSent
-        ? `Student created successfully. Welcome email sent to ${student.email}`
-        : `Student created successfully. Failed to send email - please manually provide credentials to student.`,
+      emailSent: studentEmailSent,
+      parentEmailSent,
+      message: this.buildCreationMessage(studentEmailSent, parentEmailSent, student.email, parent_email),
     };
   }
 
@@ -547,6 +619,37 @@ export class AdminService {
     }
 
     return updatedStudent;
+  }
+
+  async resetStudentProgress(id: number) {
+    const student = await this.prisma.user.findFirst({
+      where: {
+        id,
+        role: 'student',
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException(`Student with ID ${id} not found`);
+    }
+
+    // Delete all progress-related data in a transaction
+    await this.prisma.$transaction(async (prisma) => {
+      // Delete all progress events
+      await prisma.progressEvent.deleteMany({
+        where: { user_id: id },
+      });
+
+      // Delete all badges
+      await prisma.studentBadge.deleteMany({
+        where: { user_id: id },
+      });
+    });
+
+    return {
+      success: true,
+      message: `Progress reset successfully for student ${student.name}`,
+    };
   }
 
   async deleteStudent(id: number) {

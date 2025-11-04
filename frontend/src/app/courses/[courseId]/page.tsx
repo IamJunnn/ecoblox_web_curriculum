@@ -16,6 +16,8 @@ interface Course {
   title: string
   description: string
   total_levels: number
+  total_steps: number
+  course_order: number
   url: string
   isLocked?: boolean
   prerequisiteCourseName?: string
@@ -130,14 +132,14 @@ export default function CoursePage() {
     )
   }
 
-  // Render the appropriate course component based on courseId
-  if (courseId === 1) {
+  // Render the appropriate course component based on course_order
+  if (course.course_order === 1) {
     return <InstallRobloxStudio course={course} />
-  } else if (courseId === 2) {
+  } else if (course.course_order === 2) {
     return <CreateRobloxAccount course={course} />
-  } else if (courseId === 3) {
+  } else if (course.course_order === 3) {
     return <StudioBasics course={course} />
-  } else if (courseId === 4) {
+  } else if (course.course_order === 4) {
     return <GameVision course={course} />
   }
 

@@ -8,6 +8,7 @@ import progressAPI from '@/lib/api/progress.api'
 import CourseHeader from '@/components/courses/CourseHeader'
 import StepCheckbox from '@/components/courses/StepCheckbox'
 import ProgressBar from '@/components/courses/ProgressBar'
+import ConfirmDialog from '@/components/modals/ConfirmDialog'
 import { ROLE_COLORS } from '@/lib/theme'
 
 interface Course {
@@ -30,6 +31,7 @@ export default function CreateRobloxAccount({ course }: CreateRobloxAccountProps
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set())
   const [showCelebration, setShowCelebration] = useState(false)
   const [isSkipping, setIsSkipping] = useState(false)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
 
   const steps = [
     {
@@ -165,13 +167,14 @@ export default function CreateRobloxAccount({ course }: CreateRobloxAccountProps
     window.open(ROBLOX_DOCS_URL, '_blank')
   }
 
+  const handleSkipCourseClick = () => {
+    setShowConfirmDialog(true)
+  }
+
   const handleSkipCourse = async () => {
     if (!user) return
 
-    if (!window.confirm('Are you sure you already have a Roblox account? This will mark all steps as complete.')) {
-      return
-    }
-
+    setShowConfirmDialog(false)
     setIsSkipping(true)
 
     try {
@@ -213,7 +216,7 @@ export default function CreateRobloxAccount({ course }: CreateRobloxAccountProps
           <div className="flex justify-between items-start mb-4">
             <h2 className="text-2xl font-bold text-gray-900">Account Creation Progress</h2>
             <button
-              onClick={handleSkipCourse}
+              onClick={handleSkipCourseClick}
               disabled={isSkipping || completedSteps.size === steps.length}
               className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-600"
             >
@@ -308,6 +311,19 @@ export default function CreateRobloxAccount({ course }: CreateRobloxAccountProps
             </li>
           </ul>
         </div>
+
+        {/* Confirmation Dialog */}
+        <ConfirmDialog
+          isOpen={showConfirmDialog}
+          title="Already have a Roblox account?"
+          message="This will mark all steps as complete."
+          confirmText="OK"
+          cancelText="Cancel"
+          onConfirm={handleSkipCourse}
+          onCancel={() => setShowConfirmDialog(false)}
+          variant="success"
+          icon="check"
+        />
 
         {/* Celebration Modal */}
         {showCelebration && (

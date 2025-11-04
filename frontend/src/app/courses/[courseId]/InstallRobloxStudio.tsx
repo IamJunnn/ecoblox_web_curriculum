@@ -9,6 +9,7 @@ import coursesAPI from '@/lib/api/courses.api'
 import CourseHeader from '@/components/courses/CourseHeader'
 import StepCheckbox from '@/components/courses/StepCheckbox'
 import ProgressBar from '@/components/courses/ProgressBar'
+import ConfirmDialog from '@/components/modals/ConfirmDialog'
 import { ROLE_COLORS } from '@/lib/theme'
 
 interface Course {
@@ -31,6 +32,7 @@ export default function InstallRobloxStudio({ course }: InstallRobloxStudioProps
   const [showCelebration, setShowCelebration] = useState(false)
   const [isSkipping, setIsSkipping] = useState(false)
   const [earnedBadge, setEarnedBadge] = useState<any>(null)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
 
   const steps = [
     {
@@ -157,13 +159,14 @@ export default function InstallRobloxStudio({ course }: InstallRobloxStudioProps
     window.open(DOWNLOAD_URL, '_blank')
   }
 
+  const handleSkipCourseClick = () => {
+    setShowConfirmDialog(true)
+  }
+
   const handleSkipCourse = async () => {
     if (!user) return
 
-    if (!window.confirm('Are you sure you already have Roblox Studio installed? This will mark all steps as complete.')) {
-      return
-    }
-
+    setShowConfirmDialog(false)
     setIsSkipping(true)
 
     try {
@@ -223,7 +226,7 @@ export default function InstallRobloxStudio({ course }: InstallRobloxStudioProps
           <div className="flex justify-between items-start mb-4">
             <h2 className="text-2xl font-bold text-gray-900">Installation Progress</h2>
             <button
-              onClick={handleSkipCourse}
+              onClick={handleSkipCourseClick}
               disabled={isSkipping || completedSteps.size === steps.length}
               className="px-5 py-2.5 bg-white border-2 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
@@ -288,6 +291,19 @@ export default function InstallRobloxStudio({ course }: InstallRobloxStudioProps
             ))}
           </ul>
         </div>
+
+        {/* Confirmation Dialog */}
+        <ConfirmDialog
+          isOpen={showConfirmDialog}
+          title="Already have Roblox Studio installed?"
+          message="This will mark all steps as complete."
+          confirmText="OK"
+          cancelText="Cancel"
+          onConfirm={handleSkipCourse}
+          onCancel={() => setShowConfirmDialog(false)}
+          variant="success"
+          icon="check"
+        />
 
         {/* Celebration Modal */}
         {showCelebration && (
