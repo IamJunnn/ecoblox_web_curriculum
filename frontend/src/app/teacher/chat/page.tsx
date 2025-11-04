@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ChatWindow } from '@/components/chat/ChatWindow';
 import { apiClient } from '@/lib/api/client';
-import { useAuthStore } from '@/store/authStore';
+import useAuthStore from '@/store/authStore';
 
 interface Student {
   id: number;

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { ChatMessage, TypingUser } from '@/hooks/useChat';
-import { useAuthStore } from '@/store/authStore';
+import useAuthStore from '@/store/authStore';
 
 interface MessageListProps {
   messages: ChatMessage[];

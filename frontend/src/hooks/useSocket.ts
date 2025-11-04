@@ -2,17 +2,19 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { useAuthStore } from '@/store/authStore';
+import useAuthStore from '@/store/authStore';
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3400';
 
 export function useSocket() {
   const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const { token } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
 
   useEffect(() => {
-    if (!token) {
+    const token = localStorage.getItem('access_token');
+
+    if (!token || !isAuthenticated) {
       // Disconnect if no token
       if (socketRef.current) {
         socketRef.current.disconnect();
@@ -58,7 +60,7 @@ export function useSocket() {
       socketRef.current = null;
       setIsConnected(false);
     };
-  }, [token]);
+  }, [isAuthenticated]);
 
   return {
     socket: socketRef.current,
