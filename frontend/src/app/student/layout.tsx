@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import useAuthStore from '@/store/authStore'
-import { GraduationCap, User } from 'lucide-react'
+import { GraduationCap, User, MessageCircle } from 'lucide-react'
 import { ROLE_COLORS } from '@/lib/theme'
 
 export default function StudentLayout({
@@ -58,11 +58,12 @@ export default function StudentLayout({
                 </Link>
                 <Link
                   href="/student/chat"
-                  className="text-gray-600 transition-colors"
+                  className="text-gray-600 transition-colors flex items-center gap-2"
                   onMouseOver={(e) => e.currentTarget.style.color = ROLE_COLORS.student.primary}
                   onMouseOut={(e) => e.currentTarget.style.color = '#4B5563'}
                 >
-                  💬 Chat
+                  <MessageCircle className="w-4 h-4" />
+                  Chat
                 </Link>
               </div>
             </div>

@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { GraduationCap, User, LogOut } from 'lucide-react'
+import { GraduationCap, User, LogOut, MessageCircle } from 'lucide-react'
 import { ROLE_COLORS } from '@/lib/theme'
 
 export default function TeacherLayout({
@@ -99,7 +99,8 @@ export default function TeacherLayout({
                   onMouseOver={(e) => (e.currentTarget.style.color = ROLE_COLORS.teacher.primary)}
                   onMouseOut={(e) => (e.currentTarget.style.color = '')}
                 >
-                  💬 Chat
+                  <MessageCircle className="w-4 h-4" />
+                  Chat
                 </Link>
               </div>
             </div>
