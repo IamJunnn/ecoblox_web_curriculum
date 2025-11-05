@@ -4,7 +4,10 @@
       "Bash(npm run build:*)",
       "Bash(npx prisma migrate:*)",
       "Bash(cat:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nAdd teacher games endpoint and secure admin login\n\n- Fix: Add GET /api/teachers/games endpoint for teachers to view available games\n- Fix: Teachers can now see games in Add Student modal dropdown\n- Security: Remove credential hints from main login page\n- Security: Move admin login to separate page at /the-admin-page\n- Refactor: Main login page now only shows Student and Teacher tabs\n- Clean: Remove old documentation and test files\n\nThe admin panel is now hidden from public view and accessible only\nvia the secret URL /the-admin-page for enhanced security.\n\n🤖 Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

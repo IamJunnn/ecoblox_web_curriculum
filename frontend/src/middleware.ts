@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 // Define public routes that don't require authentication
-const publicRoutes = ['/', '/login']
+const publicRoutes = ['/', '/login', '/the-admin-page']
 
 // Define role-based route patterns
 const roleRoutes = {
