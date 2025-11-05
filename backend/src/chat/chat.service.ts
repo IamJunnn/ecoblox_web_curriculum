@@ -74,7 +74,22 @@ export class ChatService {
       throw new NotFoundException('Student has no assigned teacher');
     }
 
-    return this.createOrGetDirectRoom(student.created_by_teacher_id, studentId);
+    const room = await this.createOrGetDirectRoom(student.created_by_teacher_id, studentId);
+
+    // Add teacher info for frontend
+    const teacher = await this.prisma.user.findUnique({
+      where: { id: room.teacher_id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+    });
+
+    return {
+      ...room,
+      teacher,
+    };
   }
 
   /**

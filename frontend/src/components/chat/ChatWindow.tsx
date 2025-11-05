@@ -4,6 +4,8 @@ import { useEffect } from 'react';
 import { useChat } from '@/hooks/useChat';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
+import useAuthStore from '@/store/authStore';
+import { ROLE_COLORS } from '@/lib/theme';
 
 interface ChatWindowProps {
   roomId: number;
@@ -12,6 +14,7 @@ interface ChatWindowProps {
 }
 
 export function ChatWindow({ roomId, roomName, onlineStatus }: ChatWindowProps) {
+  const { user } = useAuthStore();
   const {
     messages,
     typingUsers,
@@ -23,6 +26,11 @@ export function ChatWindow({ roomId, roomName, onlineStatus }: ChatWindowProps) 
     markAsRead,
   } = useChat(roomId);
 
+  // Get header color based on user role
+  const headerColor = user?.role === 'student'
+    ? ROLE_COLORS.student.primary
+    : ROLE_COLORS.teacher.primary;
+
   // Mark messages as read when chat window is visible
   useEffect(() => {
     if (isJoined && messages.length > 0) {
@@ -33,10 +41,10 @@ export function ChatWindow({ roomId, roomName, onlineStatus }: ChatWindowProps) 
   return (
     <div className="flex flex-col h-full bg-white rounded-lg shadow-lg overflow-hidden">
       {/* Chat Header */}
-      <div className="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-4 flex items-center justify-between">
+      <div className="text-white px-6 py-4 flex items-center justify-between" style={{ backgroundColor: headerColor }}>
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-green-600 font-bold">
+            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center font-bold" style={{ color: headerColor }}>
               {roomName.charAt(0).toUpperCase()}
             </div>
             {onlineStatus !== undefined && (
@@ -49,7 +57,7 @@ export function ChatWindow({ roomId, roomName, onlineStatus }: ChatWindowProps) 
           </div>
           <div>
             <h2 className="font-semibold text-lg">{roomName}</h2>
-            <p className="text-xs text-green-100">
+            <p className="text-xs text-white opacity-80">
               {!isConnected ? (
                 'Connecting...'
               ) : !isJoined ? (
@@ -70,11 +78,11 @@ export function ChatWindow({ roomId, roomName, onlineStatus }: ChatWindowProps) 
         <div className="flex items-center gap-2">
           {isConnected ? (
             <div className="flex items-center gap-2 text-xs">
-              <div className="w-2 h-2 bg-green-300 rounded-full animate-pulse"></div>
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse opacity-80"></div>
               <span>Connected</span>
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-xs text-red-200">
+            <div className="flex items-center gap-2 text-xs opacity-80">
               <div className="w-2 h-2 bg-red-300 rounded-full"></div>
               <span>Disconnected</span>
             </div>
@@ -108,15 +116,19 @@ export function ChatWindow({ roomId, roomName, onlineStatus }: ChatWindowProps) 
       )}
 
       {/* Messages Area */}
-      <MessageList messages={messages} typingUsers={typingUsers} />
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <MessageList messages={messages} typingUsers={typingUsers} />
+      </div>
 
       {/* Message Input */}
-      <MessageInput
-        onSendMessage={sendMessage}
-        onStartTyping={startTyping}
-        onStopTyping={stopTyping}
-        disabled={!isConnected || !isJoined}
-      />
+      <div className="flex-shrink-0">
+        <MessageInput
+          onSendMessage={sendMessage}
+          onStartTyping={startTyping}
+          onStopTyping={stopTyping}
+          disabled={!isConnected || !isJoined}
+        />
+      </div>
     </div>
   );
 }

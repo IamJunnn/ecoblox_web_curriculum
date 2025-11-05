@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function SetupPasswordPage() {
+function SetupPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
@@ -48,7 +48,8 @@ export default function SetupPasswordPage() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:3400/api/auth/setup-password', {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3400';
+      const response = await fetch(`${API_URL}/api/auth/setup-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -177,5 +178,20 @@ export default function SetupPasswordPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SetupPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SetupPasswordForm />
+    </Suspense>
   );
 }

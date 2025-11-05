@@ -1,4 +1,5 @@
 import apiClient from './client'
+import type { Game } from './admin.api'
 
 export interface CreateStudentRequest {
   name: string
@@ -48,6 +49,11 @@ export interface GetStatsResponse {
   stats: TeacherStats
 }
 
+export interface GetGamesResponse {
+  success: boolean
+  games: Game[]
+}
+
 /**
  * Create a new student (teacher only)
  */
@@ -69,5 +75,13 @@ export async function getTeacherStudents(): Promise<GetStudentsResponse> {
  */
 export async function getTeacherStats(): Promise<GetStatsResponse> {
   const response = await apiClient.get<GetStatsResponse>('/api/teachers/stats')
+  return response.data
+}
+
+/**
+ * Get all available games/courses
+ */
+export async function getGames(): Promise<GetGamesResponse> {
+  const response = await apiClient.get<GetGamesResponse>('/api/teachers/games')
   return response.data
 }

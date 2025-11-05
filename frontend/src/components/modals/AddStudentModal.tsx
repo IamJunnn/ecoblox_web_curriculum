@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { X, Send } from 'lucide-react'
 import { ROLE_COLORS } from '@/lib/theme'
 import adminAPI, { Teacher, Game } from '@/lib/api/admin.api'
-import { createStudent } from '@/lib/api/teacher.api'
+import { createStudent, getGames } from '@/lib/api/teacher.api'
 
 interface AddStudentModalProps {
   isOpen: boolean
@@ -37,14 +37,17 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, role }: Ad
 
   const loadData = async () => {
     try {
-      // Load games for both admin and teacher
-      const gamesResponse = await adminAPI.getAllGames()
-      setGames(Array.isArray(gamesResponse) ? gamesResponse : gamesResponse.games || [])
-
-      // Only load teachers for admin
+      // Load games - use appropriate API based on role
       if (role === 'admin') {
+        const gamesResponse = await adminAPI.getAllGames()
+        setGames(Array.isArray(gamesResponse) ? gamesResponse : (gamesResponse as any).games || [])
+
         const teachersResponse = await adminAPI.getAllTeachers()
         setTeachers(teachersResponse.teachers || [])
+      } else {
+        // Use teacher API for games
+        const gamesResponse = await getGames()
+        setGames(gamesResponse.games || [])
       }
     } catch (error) {
       console.error('Error loading modal data:', error)
@@ -71,7 +74,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, role }: Ad
         })
 
         alert(
-          `Student created successfully!\n\nPIN: ${result.pin_code}\nClass Code: ${result.class_code}\n\nPlease share these with the student.`
+          `Student created successfully!\n\nPIN: ${(result as any).pin_code}\nClass Code: ${(result as any).class_code}\n\nPlease share these with the student.`
         )
       } else {
         // Admin API call

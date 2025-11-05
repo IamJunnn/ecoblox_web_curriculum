@@ -7,7 +7,6 @@ import { UserRole } from '@/types/user.types'
 import {
   GraduationCap,
   BookOpen,
-  Shield,
   Mail,
   Lock,
   KeyRound,
@@ -24,13 +23,13 @@ export default function HomePage() {
   const router = useRouter()
 
   // Start with default value to avoid hydration mismatch
-  const [activeTab, setActiveTab] = useState<'student' | 'teacher' | 'admin'>('student')
+  const [activeTab, setActiveTab] = useState<'student' | 'teacher'>('student')
 
   // Load saved tab from localStorage after hydration
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedTab = localStorage.getItem('loginTab')
-      if (savedTab === 'teacher' || savedTab === 'admin' || savedTab === 'student') {
+      if (savedTab === 'teacher' || savedTab === 'student') {
         setActiveTab(savedTab)
       }
     }
@@ -117,25 +116,12 @@ export default function HomePage() {
                   <BookOpen className="w-5 h-5" />
                   Teacher
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('admin')}
-                  className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
-                    activeTab === 'admin'
-                      ? 'bg-[#3CBB90] text-white hover:bg-[#2FA077]'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  <Shield className="w-5 h-5" />
-                  Admin
-                </button>
               </div>
 
               {/* Login Forms */}
               <div className="space-y-4">
                 {activeTab === 'student' && <StudentLoginForm />}
                 {activeTab === 'teacher' && <TeacherLoginForm />}
-                {activeTab === 'admin' && <AdminLoginForm />}
               </div>
             </div>
           </div>
@@ -229,10 +215,6 @@ function StudentLoginForm() {
         <Rocket className="w-5 h-5" />
         {loading ? 'Logging in...' : 'Enter Academy'}
       </button>
-
-      <p className="text-center text-sm text-gray-500 mt-3">
-        Test account: student@test.com / PIN: 1234
-      </p>
     </form>
   )
 }
@@ -315,126 +297,7 @@ function TeacherLoginForm() {
         <BookOpen className="w-5 h-5" />
         {loading ? 'Logging in...' : 'Teacher Login'}
       </button>
-
-      <p className="text-center text-sm text-gray-500">
-        Default: teacher@robloxacademy.com / teacher123
-      </p>
     </form>
   )
 }
 
-// Admin Login Form Component
-function AdminLoginForm() {
-  const router = useRouter()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const { login } = useAuthStore()
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    setLoading(true)
-
-    console.log('\n🔐 ========== ADMIN LOGIN FLOW START ==========')
-    console.log('[AdminLogin] Form submitted with email:', email)
-    console.log('[AdminLogin] Timestamp:', new Date().toISOString())
-
-    try {
-      console.log('[AdminLogin] Calling authStore.login()...')
-      await login(email, password, UserRole.ADMIN)
-
-      console.log('[AdminLogin] ✓ Login successful!')
-      console.log('[AdminLogin] Checking localStorage...')
-      const token = localStorage.getItem('access_token')
-      const user = localStorage.getItem('user')
-      console.log('[AdminLogin] Token in localStorage:', token ? 'EXISTS' : 'MISSING')
-      console.log('[AdminLogin] User in localStorage:', user ? JSON.parse(user) : 'MISSING')
-
-      console.log('[AdminLogin] Checking cookies...')
-      const allCookies = document.cookie
-      console.log('[AdminLogin] All cookies:', allCookies)
-      const hasAccessToken = allCookies.includes('access_token')
-      const hasUserRole = allCookies.includes('user_role')
-      console.log('[AdminLogin] Has access_token cookie:', hasAccessToken)
-      console.log('[AdminLogin] Has user_role cookie:', hasUserRole)
-
-      // Clear the saved tab on successful login
-      localStorage.removeItem('loginTab')
-      console.log('[AdminLogin] Cleared loginTab from localStorage')
-
-      // Longer delay to ensure cookies are fully written
-      console.log('[AdminLogin] Waiting 300ms for cookies to be set...')
-      await new Promise(resolve => setTimeout(resolve, 300))
-
-      console.log('[AdminLogin] Re-checking cookies after delay...')
-      console.log('[AdminLogin] Cookies:', document.cookie)
-
-      console.log('[AdminLogin] 🚀 Redirecting to /admin/dashboard...')
-      // Use window.location for hard redirect
-      window.location.href = '/admin/dashboard'
-    } catch (error: any) {
-      console.error('[AdminLogin] ❌ Login error:', error)
-      console.error('[AdminLogin] Error details:', error.response?.data || error.message)
-      setError(error.response?.data?.message || 'Invalid credentials. Please try again.')
-      setLoading(false)
-      console.log('========== ADMIN LOGIN FLOW END (ERROR) ==========\n')
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-          {error}
-        </div>
-      )}
-
-      <div>
-        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-          <Mail className="w-4 h-4" color={ROLE_COLORS.admin.primary} />
-          Email
-        </label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#3CBB90] focus:border-transparent"
-          placeholder="admin@ecoblox.build"
-          disabled={loading}
-          required
-        />
-      </div>
-
-      <div>
-        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-          <Lock className="w-4 h-4" color={ROLE_COLORS.admin.primary} />
-          Password
-        </label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#3CBB90] focus:border-transparent"
-          placeholder="Enter your password"
-          disabled={loading}
-          required
-        />
-      </div>
-
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full py-3 px-4 bg-[#3CBB90] text-white font-bold rounded-lg hover:bg-[#2FA077] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-      >
-        <Shield className="w-5 h-5" />
-        {loading ? 'Logging in...' : 'Admin Login'}
-      </button>
-
-      <p className="text-center text-sm text-gray-500">
-        Admin: admin@ecoblox.build
-      </p>
-    </form>
-  )
-}

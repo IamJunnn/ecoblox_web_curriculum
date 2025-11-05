@@ -65,4 +65,17 @@ export class TeachersController {
       stats
     };
   }
+
+  /**
+   * Get all available games/courses
+   * GET /api/teachers/games
+   */
+  @Get('games')
+  async getGames() {
+    const games = await this.teacherService.getAllGames();
+    return {
+      success: true,
+      games
+    };
+  }
 }

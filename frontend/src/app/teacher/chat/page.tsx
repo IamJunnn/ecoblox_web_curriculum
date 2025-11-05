@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { ChatWindow } from '@/components/chat/ChatWindow';
-import { apiClient } from '@/lib/api/client';
+import apiClient from '@/lib/api/client';
 import useAuthStore from '@/store/authStore';
+import { MessageCircle } from 'lucide-react';
+import { ROLE_COLORS } from '@/lib/theme';
 
 interface Student {
   id: number;
@@ -93,7 +95,7 @@ export default function TeacherChatPage() {
     return (
       <div className="container mx-auto p-6">
         <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-          <div className="text-6xl mb-4">💬</div>
+          <MessageCircle className="w-16 h-16 mx-auto mb-4 text-gray-400" />
           <h2 className="text-2xl font-bold text-gray-800 mb-2">
             No Students Yet
           </h2>
@@ -106,23 +108,24 @@ export default function TeacherChatPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="mb-6">
+    <div className="h-full flex flex-col container mx-auto px-4 py-6">
+      <div className="mb-4 flex-shrink-0">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">Chat with Students</h1>
         <p className="text-gray-600">
           Select a student to start chatting
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6" style={{ height: 'calc(100vh - 240px)' }}>
-        {/* Student List Sidebar */}
-        <div className="lg:col-span-1 bg-white rounded-lg shadow-lg overflow-hidden">
-          <div className="bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-3">
-            <h2 className="font-semibold">Students ({rooms.length})</h2>
-          </div>
+      <div className="flex-1 min-h-0">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
+          {/* Student List Sidebar */}
+          <div className="lg:col-span-1 bg-white rounded-lg shadow-lg overflow-hidden flex flex-col min-h-0">
+            <div className="text-white px-4 py-3 flex-shrink-0" style={{ backgroundColor: ROLE_COLORS.teacher.primary }}>
+              <h2 className="font-semibold">Students ({rooms.length})</h2>
+            </div>
 
-          <div className="overflow-y-auto" style={{ height: 'calc(100% - 56px)' }}>
-            {rooms.map((room) => (
+            <div className="overflow-y-auto flex-1">
+              {rooms.map((room) => (
               <button
                 key={room.id}
                 onClick={() => setSelectedRoom(room)}
@@ -132,7 +135,7 @@ export default function TeacherChatPage() {
               >
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+                    <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
                       {room.student?.name?.charAt(0).toUpperCase() || '?'}
                     </div>
                   </div>
@@ -167,30 +170,33 @@ export default function TeacherChatPage() {
                   )}
                 </div>
               </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Chat Window */}
-        <div className="lg:col-span-3">
-          {selectedRoom ? (
-            <ChatWindow
-              roomId={selectedRoom.id}
-              roomName={selectedRoom.student?.name || 'Unknown Student'}
-            />
-          ) : (
-            <div className="h-full bg-white rounded-lg shadow-lg flex items-center justify-center">
-              <div className="text-center">
-                <div className="text-6xl mb-4">👈</div>
-                <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                  Select a student
-                </h3>
-                <p className="text-gray-500">
-                  Choose a student from the list to start chatting
-                </p>
-              </div>
+              ))}
             </div>
-          )}
+          </div>
+
+          {/* Chat Window */}
+          <div className="lg:col-span-3 min-h-0">
+            {selectedRoom ? (
+              <div className="h-full">
+                <ChatWindow
+                  roomId={selectedRoom.id}
+                  roomName={selectedRoom.student?.name || 'Unknown Student'}
+                />
+              </div>
+            ) : (
+              <div className="h-full bg-white rounded-lg shadow-lg flex items-center justify-center">
+                <div className="text-center">
+                  <MessageCircle className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                  <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                    Select a student
+                  </h3>
+                  <p className="text-gray-500">
+                    Choose a student from the list to start chatting
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

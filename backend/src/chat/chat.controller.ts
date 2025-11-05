@@ -26,9 +26,9 @@ export class ChatController {
     const user = req.user;
 
     if (user.role === 'teacher' || user.role === 'admin') {
-      return this.chatService.getTeacherRooms(user.sub);
+      return this.chatService.getTeacherRooms(user.id);
     } else if (user.role === 'student') {
-      const room = await this.chatService.getStudentRoom(user.sub);
+      const room = await this.chatService.getStudentRoom(user.id);
       return [room]; // Return as array for consistent frontend handling
     }
 
@@ -49,7 +49,7 @@ export class ChatController {
       throw new Error('Only teachers can access this endpoint');
     }
 
-    return this.chatService.createOrGetDirectRoom(user.sub, studentId);
+    return this.chatService.createOrGetDirectRoom(user.id, studentId);
   }
 
   /**
@@ -66,7 +66,7 @@ export class ChatController {
     const limitNum = limit ? parseInt(limit) : 50;
     const offsetNum = offset ? parseInt(offset) : 0;
 
-    return this.chatService.getMessageHistory(roomId, user.sub, limitNum, offsetNum);
+    return this.chatService.getMessageHistory(roomId, user.id, limitNum, offsetNum);
   }
 
   /**
@@ -75,7 +75,7 @@ export class ChatController {
   @Post('rooms/:roomId/read')
   async markAsRead(@Request() req, @Param('roomId', ParseIntPipe) roomId: number) {
     const user = req.user;
-    return this.chatService.markAsRead(roomId, user.sub);
+    return this.chatService.markAsRead(roomId, user.id);
   }
 
   /**
@@ -84,7 +84,7 @@ export class ChatController {
   @Get('unread-count')
   async getUnreadCount(@Request() req) {
     const user = req.user;
-    const count = await this.chatService.getUnreadCount(user.sub);
+    const count = await this.chatService.getUnreadCount(user.id);
     return { count };
   }
 
@@ -97,7 +97,7 @@ export class ChatController {
     @Param('roomId', ParseIntPipe) roomId: number,
   ) {
     const user = req.user;
-    const count = await this.chatService.getRoomUnreadCount(roomId, user.sub);
+    const count = await this.chatService.getRoomUnreadCount(roomId, user.id);
     return { count };
   }
 

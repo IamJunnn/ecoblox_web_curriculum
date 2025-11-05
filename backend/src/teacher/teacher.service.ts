@@ -587,4 +587,18 @@ export class TeacherService {
       totalXP
     };
   }
+
+  /**
+   * Get all available games/courses
+   */
+  async getAllGames() {
+    return this.prisma.game.findMany({
+      include: {
+        courses: {
+          orderBy: { course_order: 'asc' },
+        },
+      },
+      orderBy: { display_order: 'asc' },
+    });
+  }
 }

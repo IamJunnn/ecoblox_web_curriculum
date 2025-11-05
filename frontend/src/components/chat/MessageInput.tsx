@@ -72,7 +72,7 @@ export function MessageInput({
 
   return (
     <div className="border-t bg-white p-4">
-      <div className="flex items-end gap-2">
+      <div className="flex items-center gap-3">
         <div className="flex-1 relative">
           <textarea
             ref={textareaRef}
@@ -83,14 +83,18 @@ export function MessageInput({
             placeholder="Type a message..."
             disabled={disabled}
             rows={1}
-            className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 resize-none max-h-32 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="w-full px-4 py-3 pr-2 border border-gray-300 rounded-2xl focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 resize-none max-h-32 disabled:bg-gray-100 disabled:cursor-not-allowed text-gray-900 placeholder:text-gray-400 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent"
+            style={{
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#d1d5db transparent'
+            }}
           />
         </div>
 
         <button
           onClick={handleSend}
           disabled={!message.trim() || disabled}
-          className="px-6 py-3 bg-green-500 text-white rounded-2xl hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-300 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+          className="flex-shrink-0 h-12 px-6 bg-green-500 text-white rounded-2xl hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-300 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -110,7 +114,7 @@ export function MessageInput({
         </button>
       </div>
 
-      <div className="mt-2 text-xs text-gray-500">
+      <div className="mt-2 text-xs text-gray-600">
         Press Enter to send, Shift+Enter for new line
       </div>
     </div>
